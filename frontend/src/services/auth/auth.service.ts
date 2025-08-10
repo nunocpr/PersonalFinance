@@ -1,6 +1,6 @@
 // src/services/auth/auth.service.ts
 import client from "@/services/api/client";
-import type { AuthResponse, LoginDto, RegisterDto } from "@/types/auth";
+import type { AuthResponse, LoginDto, RegisterDto, User } from "@/types/auth";
 
 const TOKEN_KEY = "pf_token";
 const USER_KEY = "pf_user";
@@ -44,4 +44,9 @@ export async function forgotPassword(email: string): Promise<{ message: string }
 export async function resetPassword(payload: { uid: string; token: string; password: string }): Promise<{ message: string }> {
     const res = await client.post<{ message: string }>("/auth/reset-password", payload);
     return res.data;
+}
+
+export async function getMe(): Promise<User> {
+    const res = await client.get<{ user: User }>("/auth/me");
+    return res.data.user;
 }

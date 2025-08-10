@@ -1,16 +1,34 @@
+// src/services/auth.store.ts
 import { ref, computed } from "vue";
-import { getUser, isAuthed, logout as _logout } from "./auth.service";
+import { getUser as _getUser, setUser as _setUser, getToken, logout } from "./auth.service";
+import { getMe } from "./auth.service";
 
-const user = ref(getUser());
-const authed = ref(isAuthed());
+const userRef = ref(_getUser());
+const authedRef = ref(!!getToken());
+const bootstrapped = ref(false);
 
 export function useAuth() {
-    function setSession(u: any) { user.value = u; authed.value = true; }
-    function clearSession() { _logout(); user.value = null; authed.value = false; }
+    async function bootstrapAuth() {
+        if (bootstrapped.value) return;
+        bootstrapped.value = true;
+        if (!getToken()) { userRef.value = null; authedRef.value = false; return; }
+        try {
+            const u = await getMe();
+            userRef.value = u; authedRef.value = true;
+            _setUser(u);
+        } catch {
+            // token invalid (deleted user / expired / disabled)
+            logout();
+            userRef.value = null; authedRef.value = false;
+        }
+    }
+    function setSession(u: any) { userRef.value = u; authedRef.value = true; _setUser(u); }
+    function clearSession() { logout(); userRef.value = null; authedRef.value = false; }
 
     return {
-        user: computed(() => user.value),
-        authed: computed(() => authed.value),
+        user: computed(() => userRef.value),
+        authed: computed(() => authedRef.value),
+        bootstrapAuth,
         setSession,
         clearSession,
     };

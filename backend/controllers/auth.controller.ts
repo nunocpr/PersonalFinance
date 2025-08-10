@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
+import * as authRepo from "../repositories/auth.repository";
 import config from "../config/config";
 
 const MSG = {
@@ -129,4 +130,13 @@ export const resetPassword = async (req: Request, res: Response) => {
         console.error("[auth] resetPassword failed:", err);
         res.status(400).json({ message: MSG.RESET_INVALID });
     }
+};
+
+export const me = async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const user = await authRepo.findUserById(req.user.user_id);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { user_password_hash, ...safe } = user;
+    res.json({ user: safe });
 };

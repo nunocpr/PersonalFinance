@@ -16,8 +16,8 @@ export function installInterceptors() {
         (err) => {
             if (err?.response?.status === 401) {
                 localStorage.removeItem("pf_token");
-                // optional redirect:
-                // window.location.href = "/login";
+                localStorage.removeItem("pf_user");
+                if (location.pathname !== "/login") location.href = "/login";
             }
             return Promise.reject(err);
         }

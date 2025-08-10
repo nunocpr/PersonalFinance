@@ -6,12 +6,9 @@ export const findUserByEmail = async (email: string): Promise<User | null> => {
     return result.rows[0] || null;
 };
 
-export const findUserByPublicId = async (publicId: string): Promise<User | null> => {
-    const result = await pool.query<User>(
-        `SELECT * FROM fin_users WHERE user_public_id = $1::uuid`,
-        [publicId]
-    );
-    return result.rows[0] || null;
+export const findUserById = async (id: number): Promise<User | null> => {
+    const r = await pool.query<User>("SELECT * FROM fin_users WHERE user_id = $1", [id]);
+    return r.rows[0] ?? null;
 };
 
 export const createUser = async (email: string, hash: string, name: string) => {

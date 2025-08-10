@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
-import { isAuthed } from "@/services/auth/auth.service";
+import { useAuth } from "@/services/auth/auth.store";
 
 const routes: RouteRecordRaw[] = [
     { path: "/login", name: "login", component: () => import("@/views/AuthView.vue") },
@@ -12,10 +12,17 @@ const routes: RouteRecordRaw[] = [
 
 const router = createRouter({ history: createWebHistory(), routes });
 
-router.beforeEach((to) => {
-    const authed = isAuthed();
-    if (to.meta.requiresAuth && !authed) return { name: "login" };
-    if (to.name === "login" && authed) return { name: "dashboard" };
+let didBootstrap = false;
+router.beforeEach(async (to) => {
+    const { authed, bootstrapAuth } = useAuth();
+
+    if (!didBootstrap) {
+        didBootstrap = true;
+        await bootstrapAuth(); // checks /auth/me if token exists
+    }
+
+    if (to.meta.requiresAuth && !authed.value) return { name: "login" };
+    if (to.name === "login" && authed.value) return { name: "dashboard" };
     return true;
 });
 

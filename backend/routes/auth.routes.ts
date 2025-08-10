@@ -6,8 +6,10 @@ import {
     verifyEmailPost,
     resendVerification,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    me
 } from "../controllers/auth.controller";
+import { authenticate } from "../middlewares/auth";
 
 const router = Router();
 
@@ -19,5 +21,6 @@ router.post("/verify-email", verifyEmailPost); // from frontend POST
 router.post("/resend-verification", resendVerification);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.get("/me", authenticate, me);
 
 export default router;
