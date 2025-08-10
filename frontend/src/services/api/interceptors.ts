@@ -1,23 +1,25 @@
-import apiClient from './client';
+import client from './client';
 
-// Request interceptor
-apiClient.interceptors.request.use(config => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
-// Response interceptor
-apiClient.interceptors.response.use(
-    response => response,
-    error => {
-        if (error.response?.status === 401) {
-            // Handle unauthorized
+export function installInterceptors() {
+    // Request interceptor
+    client.interceptors.request.use(config => {
+        const token = localStorage.getItem('pf_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
-        return Promise.reject(error);
-    }
-);
+        return config;
+    });
 
-export { apiClient };
+    // optional: handle 401s
+    client.interceptors.response.use(
+        (res) => res,
+        (err) => {
+            if (err?.response?.status === 401) {
+                localStorage.removeItem("pf_token");
+                // optional redirect:
+                // window.location.href = "/login";
+            }
+            return Promise.reject(err);
+        }
+    );
+}
