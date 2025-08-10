@@ -11,6 +11,14 @@ export const findUserById = async (id: number): Promise<User | null> => {
     return r.rows[0] ?? null;
 };
 
+export const findUserByPublicId = async (publicId: string): Promise<User | null> => {
+    const r = await pool.query<User>(
+        "SELECT * FROM fin_users WHERE user_public_id = $1::uuid",
+        [publicId]
+    );
+    return r.rows[0] ?? null;
+};
+
 export const createUser = async (email: string, hash: string, name: string) => {
     const result = await pool.query<User>(
         `INSERT INTO fin_users (
@@ -95,4 +103,14 @@ export const resetPasswordUsingToken = async (
         [publicId, tokenHash, newPasswordHash]
     );
     return r.rows[0] ?? null;
+};
+
+export const bumpTokenVersion = async (id: string): Promise<void> => {
+    await pool.query(
+        `UPDATE fin_users
+       SET user_token_version = user_token_version + 1,
+           user_updated_at = NOW()
+     WHERE user_public_id = $1`,
+        [id]
+    );
 };

@@ -4,8 +4,10 @@ import morgan from "morgan";
 import helmet from "helmet";
 import cors from "cors";
 import config from "./config/config";
+import cookieParser from "cookie-parser";
 
 // routes
+import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import accountRoutes from "./routes/accounts.routes";
 import transactionsRouter from "./routes/transactions.routes";
@@ -16,6 +18,7 @@ const app = express();
 // Parse body early
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Logging (before other middlewares is fine)
 app.use(morgan("dev"));
@@ -36,7 +39,7 @@ app.use(
         origin: config.FRONTEND_URL, // e.g. https://localhost:5173
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
+        allowedHeaders: ["Content-Type", "Authorization"]
     })
 );
 
@@ -44,6 +47,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionsRouter);
+app.use("/api/users", userRoutes);
 
 // Error handling last
 app.use(errorHandler);

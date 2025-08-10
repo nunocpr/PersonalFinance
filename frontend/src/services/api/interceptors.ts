@@ -12,14 +12,12 @@ export function installInterceptors() {
 
     // optional: handle 401s
     client.interceptors.response.use(
-        (res) => res,
-        (err) => {
-            if (err?.response?.status === 401) {
-                localStorage.removeItem("pf_token");
-                localStorage.removeItem("pf_user");
-                if (location.pathname !== "/login") location.href = "/login";
-            }
-            return Promise.reject(err);
+        r => r,
+        e => {
+            const s = e?.response?.status;
+            if (s === 401 || s === 403) location.href = "/auth/login";
+            return Promise.reject(e);
         }
     );
+
 }

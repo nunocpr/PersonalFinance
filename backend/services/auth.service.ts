@@ -3,10 +3,10 @@ import { hashPassword, comparePassword } from "../utils/password";
 import { generateResetToken } from "../utils/passwordReset";
 import { generateEmailToken } from "../utils/emailVerification";
 import { sha256 } from "../utils/tokens";
-import { generateToken } from "../utils/jwt";
-import { RegisterDto, LoginDto, AuthResponse } from "../types/auth";
+import { RegisterDto, LoginDto, UserDto } from "../types/auth";
 import { sendEmail } from "../utils/email";
 import config from "../config/config";
+import { signAccess, signRefresh } from "../utils/jwt";
 
 export const register = async (data: RegisterDto): Promise<{ message: string }> => {
     const existing = await authRepository.findUserByEmail(data.email);
@@ -31,22 +31,23 @@ export const register = async (data: RegisterDto): Promise<{ message: string }> 
     return { message: "Registration successful. Check your email to verify your account." };
 };
 
-export const login = async (data: LoginDto): Promise<AuthResponse> => {
+export const login = async (data: LoginDto): Promise<{ access: string; refresh: string; user: UserDto }> => {
     const user = await authRepository.findUserByEmail(data.email);
     if (!user) throw new Error("Invalid credentials");
 
     const valid = await comparePassword(data.password, user.user_password_hash);
     if (!valid) throw new Error("Invalid credentials");
-
     if (!user.user_email_verified) {
-        const err = new Error("EMAIL_NOT_VERIFIED");
-        (err as any).code = "EMAIL_NOT_VERIFIED";
+        const err: any = new Error("EMAIL_NOT_VERIFIED");
+        err.code = "EMAIL_NOT_VERIFIED";
         throw err;
     }
 
-    const token = generateToken({ user_id: user.user_id, email: user.user_email });
-    const { user_password_hash, ...userWithoutPassword } = user;
-    return { token, user: userWithoutPassword as any };
+    const v = user.user_token_version ?? 0;
+    const access = signAccess({ user_public_id: user.user_public_id, v });
+    const refresh = signRefresh({ user_public_id: user.user_public_id, v });
+
+    return { access, refresh, user: toUserDto(user) };
 };
 
 export const verifyEmail = async (uid: string, token: string): Promise<{ message: string }> => {
@@ -113,6 +114,15 @@ export const resetPassword = async (
     const tokenHash = sha256(token.trim());
     const newHash = await hashPassword(newPassword);
     const updated = await authRepository.resetPasswordUsingToken(uid, tokenHash, newHash);
+    await authRepository.bumpTokenVersion(uid);
     if (!updated) throw new Error("Invalid or expired reset link");
     return { message: "Password reset successful. You can now log in." };
 };
+
+export const toUserDto = (user: any): UserDto => {
+    return {
+        user_public_id: user.user_public_id,
+        user_email: user.user_email,
+        user_name: user.user_name
+    };
+}

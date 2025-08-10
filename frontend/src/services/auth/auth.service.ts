@@ -1,22 +1,16 @@
 // src/services/auth/auth.service.ts
 import client from "@/services/api/client";
-import type { AuthResponse, LoginDto, RegisterDto, User } from "@/types/auth";
+import type { LoginDto, RegisterDto, UserDto } from "@/types/auth";
 
-const TOKEN_KEY = "pf_token";
-const USER_KEY = "pf_user";
-
-export function getToken() { return localStorage.getItem(TOKEN_KEY); }
-export function setToken(t: string) { localStorage.setItem(TOKEN_KEY, t); }
-export function clearToken() { localStorage.removeItem(TOKEN_KEY); }
-export function getUser() { const raw = localStorage.getItem(USER_KEY); return raw ? JSON.parse(raw) : null; }
-export function setUser(u: unknown) { localStorage.setItem(USER_KEY, JSON.stringify(u)); }
-export function clearUser() { localStorage.removeItem(USER_KEY); }
-
-export async function login(payload: LoginDto): Promise<AuthResponse> {
-    const res = await client.post<AuthResponse>("/auth/login", payload);
-    setToken(res.data.token); setUser(res.data.user);
-    return res.data;
+export async function login(payload: LoginDto) {
+    const res = await client.post<{ user: UserDto }>("/auth/login", payload);
+    return res.data.user;
 }
+
+export async function logout() {
+    await client.post("/auth/logout");
+}
+
 
 export async function register(payload: RegisterDto): Promise<{ message: string }> {
     const res = await client.post<{ message: string }>("/auth/register", payload);
@@ -33,9 +27,6 @@ export async function verifyEmail(uid: string, token: string): Promise<{ message
     return res.data;
 }
 
-export function logout() { clearToken(); clearUser(); }
-export function isAuthed() { return !!getToken(); }
-
 export async function forgotPassword(email: string): Promise<{ message: string }> {
     const res = await client.post<{ message: string }>("/auth/forgot-password", { email });
     return res.data;
@@ -46,7 +37,7 @@ export async function resetPassword(payload: { uid: string; token: string; passw
     return res.data;
 }
 
-export async function getMe(): Promise<User> {
-    const res = await client.get<{ user: User }>("/auth/me");
+export async function getMe(): Promise<UserDto> {
+    const res = await client.get<{ user: UserDto }>("/auth/me");
     return res.data.user;
 }

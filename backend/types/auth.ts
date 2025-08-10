@@ -12,6 +12,13 @@ export interface User {
     user_updated_at: Date;
     user_reset_token: string | null;
     user_reset_token_expires_at: Date | null;
+    user_token_version: number;
+}
+
+export interface UserDto {
+    user_public_id: string;
+    user_email: string;
+    user_name: string;
 }
 
 export interface RegisterDto { email: string; password: string; name: string; }

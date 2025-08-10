@@ -18,7 +18,7 @@ async function submit() {
   try {
     loading.value = true; error.value = ""; needsVerification.value = false;
     const res = await login(form);
-    setSession(res.user);
+    setSession(res);
     router.replace({ name: "dashboard" });
   } catch (e: any) {
     const status = e?.response?.status;

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
 import * as authRepo from "../repositories/auth.repository";
 import config from "../config/config";
+import { signAccess, verifyRefresh } from "../utils/jwt";
+import { UserDto } from "../types/auth";
 
 const MSG = {
     REGISTER_DUPLICATE: "Email already registered",
@@ -14,6 +16,21 @@ const MSG = {
     FORGOT_GENERIC: "If that email exists, a reset link was sent.",
     RESET_OK: "Password reset successful. You can now log in.",
     RESET_INVALID: "Invalid or expired reset link",
+};
+
+const atCookie = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 15 * 60 * 1000, // 15m
+};
+const rtCookie = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
 };
 
 export const registerUser = async (req: Request, res: Response) => {
@@ -32,16 +49,49 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const loginUser = async (req: Request, res: Response) => {
     try {
-        const result = await authService.login(req.body); // { token, user }
-        res.json(result);
+        const { access, refresh, user } = await authService.login(req.body);
+        res.cookie("pf_at", access, atCookie);
+        res.cookie("pf_rt", refresh, rtCookie);
+        res.json({ user: user as UserDto });
     } catch (err: any) {
         console.error("[auth] loginUser failed:", err);
         if (err?.code === "EMAIL_NOT_VERIFIED" || err?.message === "EMAIL_NOT_VERIFIED") {
             return res.status(403).json({ message: MSG.LOGIN_VERIFY_FIRST, needsVerification: true });
         }
-        // Do not leak details: generic invalid creds message
         res.status(400).json({ message: MSG.LOGIN_INVALID });
     }
+};
+
+export const refresh = async (req: Request, res: Response) => {
+    try {
+        const rt = (req as any).cookies?.pf_rt as string | undefined;
+        if (!rt) return res.status(401).json({ message: "Unauthorized" });
+
+        // (optional) CSRF hardening in dev: check Origin/Referer
+        const origin = req.get("origin") || req.get("referer") || "";
+        if (!origin.startsWith(config.FRONTEND_URL)) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const payload = verifyRefresh(rt); // { user_public_id, v }
+        const user = await authRepo.findUserByPublicId(payload.user_public_id);
+        if (!user || user.user_token_version !== payload.v) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const access = signAccess({ user_public_id: user.user_public_id, v: user.user_token_version });
+        res.cookie("pf_at", access, atCookie);
+        res.json({ ok: true });
+    } catch (e) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+};
+
+export const logout = async (req: Request, res: Response) => {
+    await authRepo.bumpTokenVersion(req.user!.user_public_id!);
+    res.clearCookie("pf_at", { ...atCookie, maxAge: undefined });
+    res.clearCookie("pf_rt", { ...rtCookie, maxAge: undefined });
+    res.json({ message: "Logged out" });
 };
 
 /**
@@ -134,9 +184,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
 export const me = async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const user = await authRepo.findUserById(req.user.user_id);
+    const user = await authRepo.findUserByPublicId(req.user.user_public_id);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    const { user_password_hash, ...safe } = user;
-    res.json({ user: safe });
+    res.json({ user: authService.toUserDto(user) });
 };
