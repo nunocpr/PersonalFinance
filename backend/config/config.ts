@@ -33,8 +33,8 @@ const config: Config = {
         PASSWORD: process.env.DB_PASSWORD || '',
         PORT: Number(process.env.DB_PORT) || 5432,
     },
-    APP_URL: process.env.APP_URL || "http://localhost:3000",
-    FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
+    APP_URL: process.env.APP_URL || "https://localhost:3000",
+    FRONTEND_URL: process.env.FRONTEND_URL || "https://localhost:5173",
     EMAIL: {
         FROM: process.env.EMAIL_FROM || "no-reply@example.com",
         SMTP_HOST: process.env.SMTP_HOST || "",
@@ -44,7 +44,6 @@ const config: Config = {
         VERIFY_TTL_HOURS: Number(process.env.EMAIL_VERIFICATION_TTL_HOURS || 24),
     },
     PASSWORD_RESET_TTL_MINUTES: Number(process.env.PASSWORD_RESET_TTL_MINUTES || 30),
-
 };
 
 export default config;

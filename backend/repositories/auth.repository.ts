@@ -40,7 +40,6 @@ export const setEmailVerification = async (
     );
 };
 
-// repositories/auth.repository.ts
 export const verifyEmailWithToken = async (publicId: string, tokenHash: string) => {
     const result = await pool.query<User>(
         `UPDATE fin_users
