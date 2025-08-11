@@ -11,7 +11,6 @@ export async function logout() {
     await client.post("/auth/logout");
 }
 
-
 export async function register(payload: RegisterDto): Promise<{ message: string }> {
     const res = await client.post<{ message: string }>("/auth/register", payload);
     return res.data;

@@ -1,54 +1,47 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 import { useAuth } from "@/services/auth/auth.store";
 
-const routes: RouteRecordRaw[] = [
-    // PUBLIC (auth) ------------------------------------------------------------
+const AuthLayout = () => import("@/components/layout/AuthLayout.vue");
+const DashboardLayout = () => import("@/components/layout/DashboardLayout.vue");
+
+const routes = [
     {
         path: "/auth",
+        component: AuthLayout,
+        meta: { guestOnly: true },
         children: [
-            { path: "login", name: "login", component: () => import("@/views/auth/AuthView.vue") },
-            { path: "forgot-password", name: "forgot-password", component: () => import("@/views/auth/ForgotPasswordView.vue") },
-            { path: "reset-password", name: "reset-password", component: () => import("@/views/auth/ResetPasswordView.vue") },
+            { path: "login", name: "auth-login", component: () => import("@/views/auth/AuthView.vue") },
+            { path: "register", name: "auth-register", component: () => import("@/views/auth/AuthView.vue") },
+            { path: "forgot", name: "auth-forgot", component: () => import("@/views/auth/ForgotPasswordView.vue") },
             { path: "verify-email", name: "verify-email", component: () => import("@/views/auth/VerifyEmailView.vue") },
-            { path: "", redirect: { name: "login" } },
+            { path: "", redirect: { name: "auth-login" } },
         ],
     },
-
-    // PRIVATE (dashboard) ------------------------------------------------------
     {
         path: "/",
-        component: () => import("@/components/layout/DashboardLayout.vue"),
+        component: DashboardLayout,
         meta: { requiresAuth: true },
         children: [
-            { path: "", name: "dashboard", component: () => import("@/views/dashboard/HomeView.vue") },
+            { path: "", name: "dashboard", component: () => import("@/views/dashboard/DashboardView.vue") },
             { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue") },
-            // { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue") },
-            // { path: "transactions", name: "transactions", component: () => import("@/views/dashboard/TransactionsView.vue") },
+
         ],
     },
-
     { path: "/:pathMatch(.*)*", redirect: "/auth/login" },
 ];
 
 const router = createRouter({ history: createWebHistory(), routes });
 
-// Guard: bootstrap once, then gate by auth
-let didBootstrap = false;
 router.beforeEach(async (to) => {
     const { authed, bootstrapAuth } = useAuth();
-
-    if (!didBootstrap) {
-        didBootstrap = true;
-        await bootstrapAuth(); // calls /auth/me if token exists
-    }
-
-    const isAuthRoute = to.path.startsWith("/auth");
+    await bootstrapAuth();
 
     if (to.meta.requiresAuth && !authed.value) {
-        return { name: "login", query: { next: to.fullPath } };
+        if (String(to.name).startsWith("auth-")) return true;
+        return { name: "auth-login", replace: true };
     }
-    if (isAuthRoute && authed.value) {
-        return { name: "dashboard" };
+    if (to.meta.guestOnly && authed.value) {
+        return { name: "dashboard", replace: true };
     }
     return true;
 });

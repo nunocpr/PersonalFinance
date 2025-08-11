@@ -52,13 +52,12 @@ export const loginUser = async (req: Request, res: Response) => {
         const { access, refresh, user } = await authService.login(req.body);
         res.cookie("pf_at", access, atCookie);
         res.cookie("pf_rt", refresh, rtCookie);
-        res.json({ user: user as UserDto });
+        res.json({ user });
     } catch (err: any) {
-        console.error("[auth] loginUser failed:", err);
         if (err?.code === "EMAIL_NOT_VERIFIED" || err?.message === "EMAIL_NOT_VERIFIED") {
-            return res.status(403).json({ message: MSG.LOGIN_VERIFY_FIRST, needsVerification: true });
+            return res.status(403).json({ message: "Please verify your email first.", needsVerification: true });
         }
-        res.status(400).json({ message: MSG.LOGIN_INVALID });
+        res.status(400).json({ message: "Invalid email or password" });
     }
 };
 
@@ -67,31 +66,33 @@ export const refresh = async (req: Request, res: Response) => {
         const rt = (req as any).cookies?.pf_rt as string | undefined;
         if (!rt) return res.status(401).json({ message: "Unauthorized" });
 
-        // (optional) CSRF hardening in dev: check Origin/Referer
         const origin = req.get("origin") || req.get("referer") || "";
-        if (!origin.startsWith(config.FRONTEND_URL)) {
-            return res.status(403).json({ message: "Forbidden" });
-        }
+        if (!origin.startsWith(config.FRONTEND_URL)) return res.status(403).json({ message: "Forbidden" });
 
         const payload = verifyRefresh(rt); // { user_public_id, v }
         const user = await authRepo.findUserByPublicId(payload.user_public_id);
-        if (!user || user.user_token_version !== payload.v) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+        if (!user || user.user_token_version !== payload.v) return res.status(401).json({ message: "Unauthorized" });
 
         const access = signAccess({ user_public_id: user.user_public_id, v: user.user_token_version });
         res.cookie("pf_at", access, atCookie);
         res.json({ ok: true });
-    } catch (e) {
+    } catch {
         return res.status(401).json({ message: "Unauthorized" });
     }
 };
 
+
 export const logout = async (req: Request, res: Response) => {
-    await authRepo.bumpTokenVersion(req.user!.user_public_id!);
-    res.clearCookie("pf_at", { ...atCookie, maxAge: undefined });
-    res.clearCookie("pf_rt", { ...rtCookie, maxAge: undefined });
-    res.json({ message: "Logged out" });
+    try {
+        await authService.bumpTokenVersionByPublicId(req.user?.user_public_id);
+    } catch (e) {
+        console.error("[auth] logout bump failed:", e);
+    } finally {
+        // clear regardless of bump result
+        res.clearCookie("pf_at", { ...atCookie, maxAge: undefined });
+        res.clearCookie("pf_rt", { ...rtCookie, maxAge: undefined });
+        res.json({ message: "Logged out" });
+    }
 };
 
 /**
