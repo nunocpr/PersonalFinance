@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue";
-import { register } from "@/services/auth/auth.service";
+import { create } from "@/services/auth/auth.service";
 import type { RegisterDto } from "@/types/auth";
 
 const emit = defineEmits<{ (e: "switch"): void }>();
@@ -13,7 +13,7 @@ const error = ref("");
 async function submit() {
   try {
     loading.value = true; error.value = ""; msg.value = "";
-    const res = await register(form);
+    const res = await create(form);
     msg.value = res.message || "Registration successful. Check your email.";
   } catch (e: any) {
     error.value = e?.response?.data?.message ?? "Registration failed";

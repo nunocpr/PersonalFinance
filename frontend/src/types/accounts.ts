@@ -1,34 +1,25 @@
+export type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'other';
+
 export interface Account {
     id: number;
     name: string;
-    type: string;
-    balance: number; // in cents
-    description?: string;
-    isDeleted?: boolean;
+    type: AccountType;
+    balance: number;
+    description?: string | null;
     createdAt: string;
     updatedAt: string;
-    deletedAt?: string;
-    userId: number;
 }
 
 export interface CreateAccountDto {
     name: string;
-    type: string;
+    type: AccountType;
     balance?: number;
-    description?: string;
+    description?: string | null;
 }
 
 export interface UpdateAccountDto {
     name?: string;
-    type?: string;
+    type?: AccountType;
     balance?: number;
-    description?: string;
+    description?: string | null;
 }
-
-export const accountTypes = [
-    { value: 'checking', label: 'Checking Account' },
-    { value: 'savings', label: 'Savings Account' },
-    { value: 'credit', label: 'Credit Card' },
-    { value: 'investment', label: 'Investment Account' },
-    { value: 'other', label: 'Other' },
-];

@@ -24,7 +24,7 @@ const routes = [
         children: [
             { path: "", name: "dashboard", component: () => import("@/views/dashboard/DashboardView.vue") },
             { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue") },
-
+            { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue") },
         ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/auth/login" },

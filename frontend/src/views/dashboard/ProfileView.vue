@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useAuth } from "@/services/auth/auth.store";
-import { updateMyName, changeMyPassword } from "@/services/users/user.service";
+import { updateUserName, updateUserPassword } from "@/services/users/user.service";
 
 const { user, setSession } = useAuth();
 
@@ -12,7 +12,7 @@ const nameMsg = ref(""); const nameErr = ref("");
 async function saveName() {
   try {
     savingName.value = true; nameMsg.value = ""; nameErr.value = "";
-    const { user: updated } = await updateMyName(name.value);
+    const { user: updated } = await updateUserName(name.value);
     setSession(updated);
     nameMsg.value = "Name updated.";
   } catch (e: any) {
@@ -26,7 +26,7 @@ const savingPwd = ref(false); const pwdMsg = ref(""); const pwdErr = ref("");
 async function savePassword() {
   try {
     savingPwd.value = true; pwdMsg.value = ""; pwdErr.value = "";
-    await changeMyPassword({ current_password: current_password.value, new_password: new_password.value });
+    await updateUserPassword({ current_password: current_password.value, new_password: new_password.value });
     pwdMsg.value = "Password changed.";
     current_password.value = ""; new_password.value = "";
   } catch (e: any) {

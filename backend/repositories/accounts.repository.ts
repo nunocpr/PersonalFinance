@@ -1,73 +1,99 @@
+// backend/repositories/accounts.repository.ts
 import prisma from "../config/prisma";
 import type { Account } from "../generated/prisma";
-import type { CreateAccountDto, UpdateAccountDto } from "../types/accounts";
 
-// List accounts (only non-deleted)
-export async function findAllAccounts(userId: number): Promise<Account[]> {
+export type CreateInput = {
+    name: string;
+    type: string;
+    balance?: number;            // assume cents or units (your choice)
+    description?: string | null;
+};
+
+export type UpdateInput = {
+    id: number;                  // REQUIRED for updates
+    name?: string;
+    type?: string;
+    balance?: number;
+    description?: string | null;
+};
+
+/** List all non-deleted accounts for a user (by publicId) */
+export async function findAllAccounts(userPublicId: string): Promise<Account[]> {
     return prisma.account.findMany({
-        where: { userId, isDeleted: false },
-        orderBy: { createdAt: "desc" },
+        where: { isDeleted: false, user: { publicId: userPublicId } },
+        orderBy: { createdAt: "asc" },
     });
 }
 
-export async function findAccountById(id: number, userId: number): Promise<Account | null> {
+/** Find one account (by user publicId + account id) */
+export async function findAccountById(
+    userPublicId: string,
+    id: number
+): Promise<Account | null> {
     return prisma.account.findFirst({
-        where: { id, userId },
+        where: { id, isDeleted: false, user: { publicId: userPublicId } },
     });
 }
 
-export async function createAccount(dto: CreateAccountDto): Promise<Account> {
+/** Create account for a user (by publicId) */
+export async function createAccount(
+    userPublicId: string,
+    dto: CreateInput
+): Promise<Account> {
     return prisma.account.create({
         data: {
             name: dto.name,
             type: dto.type,
             balance: BigInt(dto.balance ?? 0),
             description: dto.description ?? null,
-            userId: dto.userId,
+            user: { connect: { publicId: userPublicId } },
         },
     });
 }
 
+/** Update account (scoped by userPublicId for safety) */
 export async function updateAccount(
-    id: number,
-    userId: number,
-    dto: UpdateAccountDto
+    userPublicId: string,
+    dto: UpdateInput
 ): Promise<Account> {
-    // Build partial data map safely
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.type !== undefined) data.type = dto.type;
     if (dto.balance !== undefined) data.balance = BigInt(dto.balance);
     if (dto.description !== undefined) data.description = dto.description;
-    data.updatedAt = new Date();
 
-    // Use updateMany to include userId in the filter, then re-fetch
     const { count } = await prisma.account.updateMany({
-        where: { id, userId },
+        where: { id: dto.id, isDeleted: false, user: { publicId: userPublicId } },
         data,
     });
-    if (count === 0) throw new Error("Account not found or user mismatch");
+    if (count === 0) throw new Error("Account not found or not owned by user");
 
-    const updated = await prisma.account.findUnique({ where: { id } });
-    // `findUnique` can be null theoretically—guard:
-    if (!updated) throw new Error("Account not found after update");
-    return updated;
-}
-
-export async function softDeleteAccount(id: number, userId: number): Promise<void> {
-    const { count } = await prisma.account.updateMany({
-        where: { id, userId },
-        data: { isDeleted: true, deletedAt: new Date(), updatedAt: new Date() },
+    return prisma.account.findFirstOrThrow({
+        where: { id: dto.id, user: { publicId: userPublicId } },
     });
-    if (count === 0) throw new Error("Account not found or user mismatch");
 }
 
-export async function getAccountBalance(id: number, userId: number): Promise<number> {
+/** Soft delete */
+export async function softDeleteAccount(
+    userPublicId: string,
+    id: number
+): Promise<void> {
+    const { count } = await prisma.account.updateMany({
+        where: { id, isDeleted: false, user: { publicId: userPublicId } },
+        data: { isDeleted: true, deletedAt: new Date() },
+    });
+    if (count === 0) throw new Error("Account not found or not owned by user");
+}
+
+/** Get balance (BigInt) */
+export async function getAccountBalance(
+    userPublicId: string,
+    id: number
+): Promise<bigint> {
     const acc = await prisma.account.findFirst({
-        where: { id, userId },
+        where: { id, isDeleted: false, user: { publicId: userPublicId } },
         select: { balance: true },
     });
-    if (!acc) throw new Error("Account not found or user mismatch");
-    // Prisma maps BIGINT to JS bigint; convert to number (your balances are in cents).
-    return Number(acc.balance);
+    if (!acc) throw new Error("Account not found or not owned by user");
+    return acc.balance;
 }

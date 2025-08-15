@@ -9,6 +9,7 @@ const router = useRouter();
 
 const nav = [
   { name: "Dashboard", to: { name: "dashboard" }, icon: "🏠" },
+  { name: "Accounts",  to: { name: "accounts" },  icon: "🏦" },
   { name: "Profile",   to: { name: "profile" },   icon: "👤" },
 ];
 

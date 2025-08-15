@@ -1,33 +1,29 @@
-import apiClient from '@/services/api/client'
-import type { Account, CreateAccountDto, UpdateAccountDto } from '@/types/accounts';
+// src/services/accounts/accounts.service.ts
+import client from "@/services/api/client";
+import type { Account } from "@/types/accounts";
 
 export const AccountService = {
-    async getAll(): Promise<Account[]> {
-        const response = await apiClient.get<Account[]>('/accounts');
-        return response.data;
+    async list(): Promise<Account[]> {
+        const { data } = await client.get<{ items: Account[] }>("/accounts");
+        return data.items;
     },
-
     async getById(id: number): Promise<Account> {
-        const response = await apiClient.get<Account>(`/accounts/${id}`);
-        return response.data;
+        const { data } = await client.get<{ account: Account }>(`/accounts/${id}`);
+        return data.account;
     },
-
-    async create(accountData: CreateAccountDto): Promise<Account> {
-        const response = await apiClient.post<Account>('/accounts', accountData);
-        return response.data;
+    async create(payload: { name: string; type: string; balance?: number; description?: string | null }): Promise<Account> {
+        const { data } = await client.post<{ account: Account }>("/accounts", payload);
+        return data.account;
     },
-
-    async update(id: number, accountData: UpdateAccountDto): Promise<Account> {
-        const response = await apiClient.put<Account>(`/accounts/${id}`, accountData);
-        return response.data;
+    async update(id: number, payload: Partial<{ name: string; type: string; balance: number; description: string | null }>): Promise<Account> {
+        const { data } = await client.put<{ account: Account }>(`/accounts/${id}`, payload);
+        return data.account;
     },
-
     async delete(id: number): Promise<void> {
-        await apiClient.delete(`/accounts/${id}`);
+        await client.delete(`/accounts/${id}`);
     },
-
     async getBalance(id: number): Promise<number> {
-        const response = await apiClient.get<{ balance: number }>(`/accounts/${id}/balance`);
-        return response.data.balance;
-    }
+        const { data } = await client.get<{ balance: number }>(`/accounts/${id}/balance`);
+        return data.balance;
+    },
 };
