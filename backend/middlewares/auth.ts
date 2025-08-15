@@ -12,19 +12,19 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     if (!token) return res.status(401).json({ message: "Unauthorized" });
 
     try {
-        const payload = verifyAccess(token); // { user_public_id, v }
-        const user = await authRepo.findUserByPublicId(payload.user_public_id);
+        const payload = verifyAccess(token); // { userPublicId, v }
+        const user = await authRepo.findUserByPublicId(payload.userPublicId);
         if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-        if (user.user_token_version !== payload.v) return res.status(401).json({ message: "Unauthorized" });
-        if (!user.user_is_active) return res.status(403).json({ message: "Account disabled" });
-        if (!user.user_email_verified) return res.status(403).json({ message: "Please verify your email first." });
+        if (user.tokenVersion !== payload.v) return res.status(401).json({ message: "Unauthorized" });
+        if (!user.isActive) return res.status(403).json({ message: "Account disabled" });
+        if (!user.emailVerified) return res.status(403).json({ message: "Please verify your email first." });
 
         // Attach BOTH ids for server-side use only
         req.user = {
-            user_id: user.user_id,                     // internal int
-            user_public_id: user.user_public_id,       // public uuid
-            user_email: user.user_email,
+            id: user.id,                     // internal int
+            publicId: user.publicId,       // public uuid
+            email: user.email,
         };
 
         next();

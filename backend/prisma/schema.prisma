@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* =========================
+   MODELS
+   ========================= */
+
+model User {
+  id                Int            @id @default(autoincrement())                                  @map("user_id")
+  publicId          String         @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid    @map("user_public_id")
+  email             String         @unique @db.VarChar(255)                                       @map("user_email")
+  passwordHash      String         @db.VarChar(255)                                               @map("user_password_hash")
+  name              String         @db.VarChar(100)                                               @map("user_name")
+  isActive          Boolean        @default(true)                                                 @map("user_is_active")
+  emailVerified     Boolean        @default(false)                                                @map("user_email_verified")
+  emailToken        String?        @db.VarChar(100)                                               @map("user_email_token")
+  emailTokenExpires DateTime?      @db.Timestamptz(6)                                             @map("user_email_token_expires_at")
+  createdAt         DateTime       @default(now()) @db.Timestamptz(6)                             @map("user_created_at")
+  updatedAt         DateTime       @default(now()) @db.Timestamptz(6)                             @map("user_updated_at")
+  resetToken        String?                                                                        @map("user_reset_token")
+  resetTokenExpires DateTime?      @db.Timestamptz(6)                                             @map("user_reset_token_expires_at")
+  tokenVersion      Int            @default(0)                                                    @map("user_token_version")
+
+  accounts      Account[]
+  categories    Category[]
+  incomeSources IncomeSource[]
+
+  @@map("fin_users")
+}
+
+model Account {
+  id          Int       @id @default(autoincrement())                          @map("account_id")
+  name        String    @db.VarChar(100)                                       @map("account_name")
+  type        String    @db.VarChar(50)                                        @map("account_type")
+  balance     BigInt    @default(0)                                            @map("account_balance")
+  description String?                                                           @map("account_description")
+  isDeleted   Boolean   @default(false)                                         @map("account_is_deleted")
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)                      @map("account_created_at")
+  updatedAt   DateTime  @default(now()) @db.Timestamptz(6)                      @map("account_updated_at")
+  deletedAt   DateTime? @db.Timestamptz(6)                                      @map("account_deleted_at")
+
+  userId Int  @map("account_user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  recurringTransactions RecurringTransaction[]
+  transactions          Transaction[]
+
+  @@map("fin_accounts")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement()) @map("category_id")
+  name        String   @map("category_name") @db.VarChar(100)
+  description String?  @map("category_description")
+
+  // REQUIRED: scalar FK + relation to User
+  userId Int  @map("category_user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  // Tree fields
+  parentId Int?       @map("category_parent_id")
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryChildren")
+
+  sortOrder Int      @default(0)    @map("category_sort_order")
+  icon      String?  @map("category_icon")
+  color     String?  @map("category_color")
+  archived  Boolean  @default(false) @map("category_is_archived")
+  type      CategoryKind @default(expense) @map("category_type")
+
+  // Other relations
+  recurringTransactions RecurringTransaction[]
+  transactions          Transaction[]
+
+  @@map("fin_categories")
+  // Match your DB index name if you created it in SQL:
+  @@index([userId, parentId, sortOrder], map: "fin_categories_category_user_id_category_parent_id_category_idx")
+}
+
+model IncomeSource {
+  id          Int     @id @default(autoincrement())          @map("income_source_id")
+  name        String  @db.VarChar(100)                       @map("income_source_name")
+  description String?                                        @map("income_source_description")
+
+  userId Int  @map("income_source_user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  recurringTransactions RecurringTransaction[]
+  transactions          Transaction[]
+
+  @@unique([userId, name])
+  @@map("fin_income_sources")
+}
+
+model RecurringTransaction {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("recurring_transaction_id")
+  name           String        @db.VarChar(100)                                @map("recurring_transaction_name")
+  description    String?                                                      @map("recurring_transaction_description")
+  amount         BigInt                                                       @map("recurring_transaction_amount")
+  isSaving       Boolean       @default(false)                                 @map("recurring_transaction_is_saving")
+  notes          String?                                                      @map("recurring_transaction_notes")
+  frequency      Frequency                                                    @map("recurring_transaction_frequency")
+  interval       Int           @default(1)                                     @map("recurring_transaction_interval")
+  startDate      DateTime      @db.Timestamptz(6)                              @map("recurring_transaction_start_date")
+  endDate        DateTime?     @db.Timestamptz(6)                              @map("recurring_transaction_end_date")
+  dayOfWeek      Weekday?                                                     @map("recurring_transaction_day_of_week")
+  dayOfMonth     Int?                                                         @map("recurring_transaction_day_of_month")
+  isActive       Boolean       @default(true)                                  @map("recurring_transaction_is_active")
+  nextOccurrence DateTime      @db.Timestamptz(6)                              @map("recurring_transaction_next_occurrence")
+
+  categoryId     Int?                                                         @map("recurring_transaction_category_id")
+  incomeSourceId Int?                                                         @map("recurring_transaction_income_source_id")
+  accountId      Int                                                          @map("recurring_transaction_account_id")
+
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)              @map("recurring_transaction_created_at")
+  updatedAt      DateTime      @default(now()) @db.Timestamptz(6)              @map("recurring_transaction_updated_at")
+
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category     Category?     @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
+  incomeSource IncomeSource? @relation(fields: [incomeSourceId], references: [id], onUpdate: NoAction)
+
+  transactions Transaction[]
+
+  @@map("fin_recurring_transactions")
+}
+
+model Transaction {
+  id                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("transaction_id")
+  date                   DateTime              @default(now()) @db.Timestamptz(6)             @map("transaction_date")
+  amount                 BigInt                                                         @map("transaction_amount")
+  description            String                @db.VarChar(255)                               @map("transaction_description")
+  isSaving               Boolean               @default(false)                                @map("transaction_is_saving")
+  notes                  String?                                                         @map("transaction_notes")
+
+  categoryId             Int?                                                           @map("transaction_category_id")
+  accountId              Int                                                            @map("transaction_account_id")
+  incomeSourceId         Int?                                                           @map("transaction_income_source_id")
+  recurringTransactionId String?               @db.Uuid                                  @map("transaction_recurring_transaction_id")
+
+  createdAt              DateTime              @default(now()) @db.Timestamptz(6)        @map("transaction_created_at")
+  updatedAt              DateTime              @default(now()) @db.Timestamptz(6)        @map("transaction_updated_at")
+
+  account               Account               @relation(fields: [accountId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category              Category?             @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
+  incomeSource          IncomeSource?         @relation(fields: [incomeSourceId], references: [id], onUpdate: NoAction)
+  recurringTransaction  RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onUpdate: NoAction)
+
+  @@map("fin_transactions")
+}
+
+/* =========================
+   ENUMS (mapped to DB enums)
+   ========================= */
+
+enum Frequency {
+  daily
+  weekly
+  monthly
+  yearly
+
+  @@map("frequency_enum")
+}
+
+enum Weekday {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
+
+  @@map("weekday_enum")
+}
+
+enum CategoryKind {
+  expense
+  income
+  transfer
+
+  @@map("category_kind")
+}

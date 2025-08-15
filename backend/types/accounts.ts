@@ -1,27 +1,15 @@
-export interface Account {
-    account_id: number;
-    account_name: string;
-    account_type: string;
-    account_balance: number; // in cents
-    account_description?: string;
-    account_is_deleted?: boolean;
-    account_created_at: Date;
-    account_updated_at: Date;
-    account_deleted_at?: Date;
-    user_id: number;
-}
+// types/accounts.ts
+export type CreateAccountDto = {
+    name: string;
+    type: 'checking' | 'savings' | 'credit' | 'investment' | 'other';
+    balance?: bigint | number;        // store in cents; prefer bigint internally
+    description?: string | null;
+    userId: number;                  // if you still pass internal user id to repo
+};
 
-export interface CreateAccountDto {
-    account_name: string;
-    account_type: string;
-    account_balance?: number;
-    account_description?: string;
-    user_id: number;
-}
-
-export interface UpdateAccountDto {
-    account_name?: string;
-    account_type?: string;
-    account_balance?: number;
-    account_description?: string;
-}
+export type UpdateAccountDto = Partial<{
+    name: string;
+    type: 'checking' | 'savings' | 'credit' | 'investment' | 'other';
+    balance: bigint | number;
+    description: string | null;
+}>;

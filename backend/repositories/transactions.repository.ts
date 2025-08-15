@@ -1,29 +1,28 @@
-import pool from '../config/db';
-import { type Transaction } from '../types/transactions';
+import prisma from "../config/prisma";
+import type { Transaction } from "../generated/prisma";
+import type { Transaction as TxDto } from "../types/transactions";
 
-export const findAll = async () => {
-    const result = await pool.query<Transaction>(
-        'SELECT * FROM fin_transactions ORDER BY transaction_date DESC'
-    );
-    return result.rows;
-};
+// Get all transactions (you may later scope by user)
+export async function findAll(): Promise<Transaction[]> {
+    return prisma.transaction.findMany({
+        orderBy: { date: "desc" },
+    });
+}
 
-export const create = async (transaction: Omit<Transaction, 'transaction_id'>) => {
-    const result = await pool.query<Transaction>(
-        `INSERT INTO fin_transactions (
-      transaction_date, transaction_amount, transaction_description,
-      transaction_is_saving, transaction_category_id,
-      transaction_account_id, transaction_income_source_id
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [
-            transaction.transaction_date,
-            transaction.transaction_amount,
-            transaction.transaction_description,
-            transaction.transaction_is_saving,
-            transaction.transaction_category_id,
-            transaction.transaction_account_id,
-            transaction.transaction_income_source_id,
-        ]
-    );
-    return result.rows[0];
-};
+// Create a transaction from your DTO shape
+export async function create(
+    t: Omit<TxDto, "transaction_id">
+): Promise<Transaction> {
+    return prisma.transaction.create({
+        data: {
+            date: new Date(t.transaction_date),
+            amount: BigInt(t.transaction_amount),
+            description: t.transaction_description,
+            isSaving: t.transaction_is_saving ?? false,
+            notes: t.transaction_notes ?? null,
+            categoryId: t.transaction_category_id ?? null,
+            accountId: t.transaction_account_id,
+            incomeSourceId: t.transaction_income_source_id ?? null,
+        },
+    });
+}

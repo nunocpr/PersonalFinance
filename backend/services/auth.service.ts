@@ -16,15 +16,15 @@ export async function register(data: RegisterDto): Promise<{ message: string }> 
     const user = await authRepository.createUser(data.email, hashedPwd, data.name);
 
     const { token, tokenHash, expiresAt } = generateEmailToken();
-    await authRepository.setEmailVerification(user.user_id, tokenHash, expiresAt);
+    await authRepository.setEmailVerification(user.id, tokenHash, expiresAt);
 
     const verifyUrl =
-        `${config.FRONTEND_URL}/verify-email?uid=${encodeURIComponent(user.user_public_id)}&token=${encodeURIComponent(token)}`;
+        `${config.FRONTEND_URL}/verify-email?uid=${encodeURIComponent(user.publicId)}&token=${encodeURIComponent(token)}`;
 
     await sendEmail(
-        user.user_email,
+        user.email,
         "Verify your email",
-        `<p>Hi ${user.user_name},</p>
+        `<p>Hi ${user.name},</p>
      <p>Please verify your email by clicking the link below (expires in ${config.EMAIL.VERIFY_TTL_HOURS} hours):</p>
      <p><a href="${verifyUrl}">Verify Email</a></p>`
     );
@@ -36,16 +36,16 @@ export async function login(data: LoginDto): Promise<{ access: string; refresh: 
     const user = await authRepository.findUserByEmail(data.email);
     if (!user) throw new Error("Invalid credentials");
 
-    const valid = await comparePassword(data.password, user.user_password_hash);
+    const valid = await comparePassword(data.password, user.passwordHash);
     if (!valid) throw new Error("Invalid credentials");
 
-    if (!user.user_email_verified) {
+    if (!user.emailVerified) {
         const err = new Error("EMAIL_NOT_VERIFIED");
         (err as any).code = "EMAIL_NOT_VERIFIED";
         throw err;
     }
 
-    const payload = { user_public_id: user.user_public_id, v: user.user_token_version };
+    const payload = { userPublicId: user.publicId, v: user.tokenVersion };
     const access = signAccess(payload);
     const refresh = signRefresh(payload);
 
@@ -63,19 +63,19 @@ export async function verifyEmail(uid: string, token: string): Promise<{ message
 export async function resendVerification(email: string): Promise<{ message: string }> {
     const user = await authRepository.findUserByEmail(email);
     if (!user) throw new Error("User not found");
-    if (user.user_email_verified) return { message: "Email already verified" };
+    if (user.emailVerified) return { message: "Email already verified" };
 
     const { token, tokenHash, expiresAt } = generateEmailToken();
-    await authRepository.setEmailVerification(user.user_id, tokenHash, expiresAt);
+    await authRepository.setEmailVerification(user.id, tokenHash, expiresAt);
 
     const verifyUrl = `${config.FRONTEND_URL}/api/auth/verify-email?uid=${encodeURIComponent(
-        user.user_public_id
+        user.publicId
     )}&token=${encodeURIComponent(token)}`;
 
     await sendEmail(
-        user.user_email,
+        user.email,
         "Verify your email (resend)",
-        `<p>Hi ${user.user_name},</p><p><a href="${verifyUrl}">Verify Email</a></p>`
+        `<p>Hi ${user.name},</p><p><a href="${verifyUrl}">Verify Email</a></p>`
     );
 
     return { message: "Verification email resent." };
@@ -87,16 +87,16 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
     if (!user) return generic;
 
     const { token, tokenHash, expiresAt } = generateResetToken();
-    await authRepository.setPasswordResetToken(user.user_id, tokenHash, expiresAt);
+    await authRepository.setPasswordResetToken(user.id, tokenHash, expiresAt);
 
     const url = `${config.FRONTEND_URL}/reset-password?uid=${encodeURIComponent(
-        user.user_public_id
+        user.publicId
     )}&token=${encodeURIComponent(token)}`;
 
     await sendEmail(
-        user.user_email,
+        user.email,
         "Reset your PersonalFinance password",
-        `<p>Hi ${user.user_name},</p>
+        `<p>Hi ${user.name},</p>
      <p><a href="${url}">Reset Password</a></p>`
     );
     return generic;
@@ -118,8 +118,8 @@ export async function bumpTokenVersionByPublicId(publicId?: string): Promise<voi
 
 export function toUserDto(user: any): UserDto {
     return {
-        user_public_id: user.user_public_id,
-        user_email: user.user_email,
-        user_name: user.user_name,
+        publicId: user.publicId,
+        email: user.email,
+        name: user.name,
     };
 }

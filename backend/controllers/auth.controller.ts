@@ -69,11 +69,13 @@ export const refresh = async (req: Request, res: Response) => {
         const origin = req.get("origin") || req.get("referer") || "";
         if (!origin.startsWith(config.FRONTEND_URL)) return res.status(403).json({ message: "Forbidden" });
 
-        const payload = verifyRefresh(rt); // { user_public_id, v }
-        const user = await authRepo.findUserByPublicId(payload.user_public_id);
-        if (!user || user.user_token_version !== payload.v) return res.status(401).json({ message: "Unauthorized" });
+        const payload = verifyRefresh(rt); // { userPublicId, v }
+        const user = await authRepo.findUserByPublicId(payload.userPublicId);
+        if (!user || user.tokenVersion !== payload.v) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
 
-        const access = signAccess({ user_public_id: user.user_public_id, v: user.user_token_version });
+        const access = signAccess({ userPublicId: user.publicId, v: user.tokenVersion });
         res.cookie("pf_at", access, atCookie);
         res.json({ ok: true });
     } catch {
@@ -82,9 +84,10 @@ export const refresh = async (req: Request, res: Response) => {
 };
 
 
+
 export const logout = async (req: Request, res: Response) => {
     try {
-        await authService.bumpTokenVersionByPublicId(req.user?.user_public_id);
+        await authService.bumpTokenVersionByPublicId(req.user?.publicId);
     } catch (e) {
         console.error("[auth] logout bump failed:", e);
     } finally {
@@ -185,7 +188,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
 export const me = async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const user = await authRepo.findUserByPublicId(req.user.user_public_id);
+    const user = await authRepo.findUserByPublicId(req.user.publicId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     res.json({ user: authService.toUserDto(user) });
 };

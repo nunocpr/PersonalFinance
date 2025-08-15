@@ -1,6 +1,6 @@
 import jwt, { SignOptions } from "jsonwebtoken";
 
-export type JwtPayload = { user_public_id: string; v: number };
+export type JwtPayload = { userPublicId: string; v: number };
 
 // Derive the correct "expiresIn" type from SignOptions
 type ExpiresIn = SignOptions["expiresIn"];

@@ -5,7 +5,7 @@ export const updateMe = async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
         const { user_name } = req.body as { user_name?: string };
-        const result = await userService.changeDisplayName(req.user.user_id, user_name || "");
+        const result = await userService.changeDisplayName(req.user.id, user_name || "");
         res.json(result); // { user }
     } catch (err) {
         console.error("[user] updateMe failed:", err);
@@ -18,7 +18,7 @@ export const changeMyPassword = async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
         const { current_password, new_password } = req.body as { current_password?: string; new_password?: string };
-        const result = await userService.changePassword(req.user.user_id, current_password || "", new_password || "");
+        const result = await userService.changePassword(req.user.id, current_password || "", new_password || "");
         res.json(result); // { message }
     } catch (err: any) {
         console.error("[user] changeMyPassword failed:", err);

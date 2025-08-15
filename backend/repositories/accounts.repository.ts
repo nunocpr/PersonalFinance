@@ -1,103 +1,73 @@
-import pool from '../config/db';
-import { Account, CreateAccountDto, UpdateAccountDto } from '../types/accounts';
+import prisma from "../config/prisma";
+import type { Account } from "../generated/prisma";
+import type { CreateAccountDto, UpdateAccountDto } from "../types/accounts";
 
-function isValidValue(value: any): value is string | number | Date {
-    return typeof value === 'string' ||
-        typeof value === 'number' ||
-        value instanceof Date;
+// List accounts (only non-deleted)
+export async function findAllAccounts(userId: number): Promise<Account[]> {
+    return prisma.account.findMany({
+        where: { userId, isDeleted: false },
+        orderBy: { createdAt: "desc" },
+    });
 }
 
-type SqlValue = string | number | Date | boolean | null;
-const values: SqlValue[] = [];
+export async function findAccountById(id: number, userId: number): Promise<Account | null> {
+    return prisma.account.findFirst({
+        where: { id, userId },
+    });
+}
 
-export const findAllAccounts = async (userId: number): Promise<Account[]> => {
-    const result = await pool.query<Account>(
-        'SELECT * FROM fin_accounts WHERE user_id = $1 AND account_is_deleted = false',
-        [userId]
-    );
-    return result.rows;
-};
+export async function createAccount(dto: CreateAccountDto): Promise<Account> {
+    return prisma.account.create({
+        data: {
+            name: dto.name,
+            type: dto.type,
+            balance: BigInt(dto.balance ?? 0),
+            description: dto.description ?? null,
+            userId: dto.userId,
+        },
+    });
+}
 
-export const findAccountById = async (id: number, userId: number): Promise<Account | null> => {
-    const result = await pool.query<Account>(
-        'SELECT * FROM fin_accounts WHERE account_id = $1 AND user_id = $2',
-        [id, userId]
-    );
-    return result.rows[0] || null;
-};
-
-export const createAccount = async (accountData: CreateAccountDto): Promise<Account> => {
-    const result = await pool.query<Account>(
-        `INSERT INTO fin_accounts (
-      account_name, account_type, account_balance,
-      account_description, user_id
-    ) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [
-            accountData.account_name,
-            accountData.account_type,
-            accountData.account_balance || 0,
-            accountData.account_description,
-            accountData.user_id
-        ]
-    );
-    return result.rows[0];
-};
-
-export const updateAccount = async (
+export async function updateAccount(
     id: number,
     userId: number,
-    accountData: UpdateAccountDto
-): Promise<Account> => {
-    // Explicitly type the arrays
-    const queryParts: string[] = [];
-    const values: (string | number | Date)[] = [];
-    let paramIndex = 1;
+    dto: UpdateAccountDto
+): Promise<Account> {
+    // Build partial data map safely
+    const data: any = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.type !== undefined) data.type = dto.type;
+    if (dto.balance !== undefined) data.balance = BigInt(dto.balance);
+    if (dto.description !== undefined) data.description = dto.description;
+    data.updatedAt = new Date();
 
-    Object.entries(accountData).forEach(([key, value]) => {
-        if (value !== undefined && isValidValue(value)) {
-            queryParts.push(`${key} = $${paramIndex}`);
-            values.push(value);
-            paramIndex++;
-        }
+    // Use updateMany to include userId in the filter, then re-fetch
+    const { count } = await prisma.account.updateMany({
+        where: { id, userId },
+        data,
     });
-    if (queryParts.length === 0) {
-        throw new Error('No valid fields to update');
-    }
+    if (count === 0) throw new Error("Account not found or user mismatch");
 
-    values.push(id, userId);
-    const query = `
-    UPDATE fin_accounts 
-    SET ${queryParts.join(', ')}, account_updated_at = CURRENT_TIMESTAMP 
-    WHERE account_id = $${paramIndex} AND user_id = $${paramIndex + 1}
-    RETURNING *
-  `;
+    const updated = await prisma.account.findUnique({ where: { id } });
+    // `findUnique` can be null theoretically—guard:
+    if (!updated) throw new Error("Account not found after update");
+    return updated;
+}
 
-    const result = await pool.query<Account>(query, values);
-    if (result.rows.length === 0) {
-        throw new Error('Account not found or user mismatch');
-    }
-    return result.rows[0];
-};
+export async function softDeleteAccount(id: number, userId: number): Promise<void> {
+    const { count } = await prisma.account.updateMany({
+        where: { id, userId },
+        data: { isDeleted: true, deletedAt: new Date(), updatedAt: new Date() },
+    });
+    if (count === 0) throw new Error("Account not found or user mismatch");
+}
 
-export const softDeleteAccount = async (id: number, userId: number): Promise<void> => {
-    const result = await pool.query(
-        `UPDATE fin_accounts 
-     SET account_is_deleted = true, account_deleted_at = CURRENT_TIMESTAMP 
-     WHERE account_id = $1 AND user_id = $2`,
-        [id, userId]
-    );
-    if (result.rowCount === 0) {
-        throw new Error('Account not found or user mismatch');
-    }
-};
-
-export const getAccountBalance = async (id: number, userId: number): Promise<number> => {
-    const result = await pool.query<{ account_balance: number }>(
-        'SELECT account_balance FROM fin_accounts WHERE account_id = $1 AND user_id = $2',
-        [id, userId]
-    );
-    if (result.rows.length === 0) {
-        throw new Error('Account not found or user mismatch');
-    }
-    return result.rows[0].account_balance;
-};
+export async function getAccountBalance(id: number, userId: number): Promise<number> {
+    const acc = await prisma.account.findFirst({
+        where: { id, userId },
+        select: { balance: true },
+    });
+    if (!acc) throw new Error("Account not found or user mismatch");
+    // Prisma maps BIGINT to JS bigint; convert to number (your balances are in cents).
+    return Number(acc.balance);
+}

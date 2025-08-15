@@ -5,9 +5,9 @@ import "express-serve-static-core";
 declare module "express-serve-static-core" {
     interface Request {
         user?: {
-            user_id: number;           // internal DB id (server-only)
-            user_public_id: string;    // public UUID (from JWT)
-            user_email: string;
+            id: number;           // internal DB id (server-only)
+            publicId: string;    // public UUID (from JWT)
+            email: string;
         };
     }
 }

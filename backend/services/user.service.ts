@@ -4,7 +4,7 @@ import { comparePassword, hashPassword } from "../utils/password";
 export async function changeDisplayName(userId: number, name: string) {
     if (!name || name.trim().length < 2) throw new Error("Invalid name");
     const updated = await userRepo.updateName(userId, name.trim());
-    const { user_password_hash, ...safe } = updated;
+    const { passwordHash, ...safe } = updated;
     return { user: safe };
 }
 
@@ -15,7 +15,7 @@ export async function changePassword(userId: number, current: string, nextPwd: s
     const user = await userRepo.findById(userId);
     if (!user) throw new Error("Unauthorized");
 
-    const ok = await comparePassword(current, user.user_password_hash);
+    const ok = await comparePassword(current, user.passwordHash);
     if (!ok) {
         const e = new Error("INVALID_CURRENT_PASSWORD");
         (e as any).code = "INVALID_CURRENT_PASSWORD";

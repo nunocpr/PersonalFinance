@@ -7,11 +7,13 @@ import config from "./config/config";
 import cookieParser from "cookie-parser";
 
 // routes
+import categoryRoutes from "./routes/category.routes";
 import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import accountRoutes from "./routes/accounts.routes";
 import transactionsRouter from "./routes/transactions.routes";
 import errorHandler from "./middlewares/errorHandler";
+
 
 const app = express();
 
@@ -48,6 +50,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/users", userRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // Error handling last
 app.use(errorHandler);

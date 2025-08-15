@@ -1,116 +1,123 @@
-import pool from "../config/db";
-import { User } from "../types/auth";
+import prisma from "../config/prisma";
+import type { User } from "../generated/prisma";
 
-export const findUserByEmail = async (email: string): Promise<User | null> => {
-    const result = await pool.query<User>("SELECT * FROM fin_users WHERE user_email = $1", [email]);
-    return result.rows[0] || null;
-};
+// Finders
+export async function findUserByEmail(email: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { email } });
+}
 
-export const findUserById = async (id: number): Promise<User | null> => {
-    const r = await pool.query<User>("SELECT * FROM fin_users WHERE user_id = $1", [id]);
-    return r.rows[0] ?? null;
-};
+export async function findUserById(id: number): Promise<User | null> {
+    return prisma.user.findUnique({ where: { id } });
+}
 
-export const findUserByPublicId = async (publicId: string): Promise<User | null> => {
-    const r = await pool.query<User>(
-        "SELECT * FROM fin_users WHERE user_public_id = $1::uuid",
-        [publicId]
-    );
-    return r.rows[0] ?? null;
-};
+export async function findUserByPublicId(publicId: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { publicId } });
+}
 
-export const createUser = async (email: string, hash: string, name: string) => {
-    const result = await pool.query<User>(
-        `INSERT INTO fin_users (
-       user_email, user_password_hash, user_name, user_is_active, user_email_verified
-     ) VALUES ($1, $2, $3, true, false)
-     RETURNING *`,
-        [email, hash, name]
-    );
-    return result.rows[0];
-};
+// Create
+export async function createUser(email: string, hash: string, name: string): Promise<User> {
+    return prisma.user.create({
+        data: {
+            email,
+            passwordHash: hash,
+            name,
+            isActive: true,
+            emailVerified: false,
+        },
+    });
+}
 
-export const setEmailVerification = async (
+// Email verification helpers
+export async function setEmailVerification(
     userId: number,
     tokenHash: string,
     expiresAt: Date
-): Promise<void> => {
-    await pool.query(
-        `UPDATE fin_users
-       SET user_email_token = $1,
-           user_email_token_expires_at = $2,
-           user_updated_at = NOW()
-     WHERE user_id = $3`,
-        [tokenHash, expiresAt, userId]
-    );
-};
+): Promise<void> {
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            emailToken: tokenHash,
+            emailTokenExpires: expiresAt,
+            updatedAt: new Date(),
+        },
+    });
+}
 
-export const verifyEmailWithToken = async (publicId: string, tokenHash: string) => {
-    const result = await pool.query<User>(
-        `UPDATE fin_users
-       SET user_email_verified = true,
-           user_email_token = NULL,
-           user_email_token_expires_at = NULL,
-           user_updated_at = NOW()
-     WHERE user_public_id = $1::uuid
-       AND user_email_token = $2
-       AND user_email_token_expires_at IS NOT NULL
-       AND user_email_token_expires_at > NOW()
-     RETURNING *`,
-        [publicId, tokenHash]
-    );
-    return result.rows[0] || null;
-};
+export async function verifyEmailWithToken(
+    publicId: string,
+    tokenHash: string
+): Promise<User | null> {
+    // Find a matching (non-expired) user first
+    const candidate = await prisma.user.findFirst({
+        where: {
+            publicId,
+            emailToken: tokenHash,
+            emailTokenExpires: { gt: new Date() },
+        },
+    });
+    if (!candidate) return null;
 
-export const setPasswordResetToken = async (
+    // Verify
+    return prisma.user.update({
+        where: { id: candidate.id },
+        data: {
+            emailVerified: true,
+            emailToken: null,
+            emailTokenExpires: null,
+            updatedAt: new Date(),
+        },
+    });
+}
+
+// Password reset helpers
+export async function setPasswordResetToken(
     userId: number,
     tokenHash: string,
     expiresAt: Date
-): Promise<void> => {
-    await pool.query(
-        `UPDATE fin_users
-       SET user_reset_token = $1,
-           user_reset_token_expires_at = $2,
-           user_updated_at = NOW()
-     WHERE user_id = $3`,
-        [tokenHash, expiresAt, userId]
-    );
-};
+): Promise<void> {
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            resetToken: tokenHash,
+            resetTokenExpires: expiresAt,
+            updatedAt: new Date(),
+        },
+    });
+}
 
-export const getUserByPublicId = async (publicId: string): Promise<User | null> => {
-    const r = await pool.query<User>(
-        `SELECT * FROM fin_users WHERE user_public_id = $1::uuid`,
-        [publicId]
-    );
-    return r.rows[0] ?? null;
-};
+export async function getUserByPublicId(publicId: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { publicId } });
+}
 
-export const resetPasswordUsingToken = async (
+export async function resetPasswordUsingToken(
     publicId: string,
     tokenHash: string,
     newPasswordHash: string
-): Promise<User | null> => {
-    const r = await pool.query<User>(
-        `UPDATE fin_users
-        SET user_password_hash = $3,
-            user_reset_token = NULL,
-            user_reset_token_expires_at = NULL,
-            user_updated_at = NOW()
-      WHERE user_public_id = $1::uuid
-        AND user_reset_token = $2
-        AND (user_reset_token_expires_at IS NOT NULL AND user_reset_token_expires_at > NOW())
-      RETURNING *`,
-        [publicId, tokenHash, newPasswordHash]
-    );
-    return r.rows[0] ?? null;
-};
+): Promise<User | null> {
+    const candidate = await prisma.user.findFirst({
+        where: {
+            publicId,
+            resetToken: tokenHash,
+            resetTokenExpires: { gt: new Date() },
+        },
+    });
+    if (!candidate) return null;
 
-export const bumpTokenVersion = async (id: string): Promise<void> => {
-    await pool.query(
-        `UPDATE fin_users
-       SET user_token_version = user_token_version + 1,
-           user_updated_at = NOW()
-     WHERE user_public_id = $1`,
-        [id]
-    );
-};
+    return prisma.user.update({
+        where: { id: candidate.id },
+        data: {
+            passwordHash: newPasswordHash,
+            resetToken: null,
+            resetTokenExpires: null,
+            updatedAt: new Date(),
+        },
+    });
+}
+
+// Increment token version (logout everywhere)
+export async function bumpTokenVersion(publicId: string): Promise<void> {
+    await prisma.user.update({
+        where: { publicId },
+        data: { tokenVersion: { increment: 1 }, updatedAt: new Date() },
+    });
+}
