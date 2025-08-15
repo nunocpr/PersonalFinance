@@ -28,9 +28,9 @@ const HEADER_H = "h-16"; // 64px header for both
 const asideWidth = computed(() => (collapsed.value ? "4rem" : "16rem")); // 64 / 256 px
 
 const initial = computed(() =>
-  (user?.value?.user_name || user?.value?.user_email || "?").slice(0, 1).toUpperCase()
+  (user?.value?.name || user?.value?.email || "?").slice(0, 1).toUpperCase()
 );
-const displayName = computed(() => user?.value?.user_name || user?.value?.user_email);
+const displayName = computed(() => user?.value?.name || user?.value?.email);
 
 async function doLogout() {
   await clearSession();

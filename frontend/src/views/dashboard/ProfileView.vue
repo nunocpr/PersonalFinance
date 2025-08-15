@@ -5,7 +5,7 @@ import { updateMyName, changeMyPassword } from "@/services/users/user.service";
 
 const { user, setSession } = useAuth();
 
-const name = ref(user.value?.user_name ?? "");
+const name = ref(user.value?.name ?? "");
 const savingName = ref(false);
 const nameMsg = ref(""); const nameErr = ref("");
 
