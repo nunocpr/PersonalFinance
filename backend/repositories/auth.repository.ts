@@ -43,32 +43,6 @@ export async function setEmailVerification(
     });
 }
 
-export async function verifyEmailWithToken(
-    publicId: string,
-    tokenHash: string
-): Promise<User | null> {
-    // Find a matching (non-expired) user first
-    const candidate = await prisma.user.findFirst({
-        where: {
-            publicId,
-            emailToken: tokenHash,
-            emailTokenExpires: { gt: new Date() },
-        },
-    });
-    if (!candidate) return null;
-
-    // Verify
-    return prisma.user.update({
-        where: { id: candidate.id },
-        data: {
-            emailVerified: true,
-            emailToken: null,
-            emailTokenExpires: null,
-            updatedAt: new Date(),
-        },
-    });
-}
-
 // Password reset helpers
 export async function setPasswordResetToken(
     userId: number,

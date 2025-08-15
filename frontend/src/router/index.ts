@@ -10,13 +10,13 @@ const routes = [
         component: AuthLayout,
         meta: { guestOnly: true },
         children: [
-            { path: "login", name: "auth-login", component: () => import("@/views/auth/AuthView.vue") },
-            { path: "register", name: "auth-register", component: () => import("@/views/auth/AuthView.vue") },
-            { path: "forgot", name: "auth-forgot", component: () => import("@/views/auth/ForgotPasswordView.vue") },
-            { path: "verify-email", name: "verify-email", component: () => import("@/views/auth/VerifyEmailView.vue") },
+            { path: "login", name: "auth-login", meta: { guestOnly: true }, component: () => import("@/views/auth/AuthView.vue") },
+            { path: "register", name: "auth-register", meta: { guestOnly: true }, component: () => import("@/views/auth/AuthView.vue") },
+            { path: "forgot", name: "auth-forgot", meta: { guestOnly: true }, component: () => import("@/views/auth/ForgotPasswordView.vue") },
             { path: "", redirect: { name: "auth-login" } },
         ],
     },
+    { path: "/verify-email", name: "verify-email", meta: { guestOnly: true }, component: () => import("@/views/auth/VerifyEmailView.vue") },
     {
         path: "/",
         component: DashboardLayout,
@@ -34,14 +34,15 @@ const router = createRouter({ history: createWebHistory(), routes });
 
 router.beforeEach(async (to) => {
     const { authed, bootstrapAuth } = useAuth();
+
+    if (to.matched.some(r => r.meta?.guestOnly)) {
+        return true;
+    }
+
     await bootstrapAuth();
 
-    if (to.meta.requiresAuth && !authed.value) {
-        if (String(to.name).startsWith("auth-")) return true;
+    if (to.matched.some(r => r.meta?.requiresAuth) && !authed.value) {
         return { name: "auth-login", replace: true };
-    }
-    if (to.meta.guestOnly && authed.value) {
-        return { name: "dashboard", replace: true };
     }
     return true;
 });

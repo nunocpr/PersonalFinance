@@ -7,6 +7,7 @@ import { signAccess, signRefresh } from "../utils/jwt";
 import { RegisterDto, LoginDto, UserDto } from "../types/auth";
 import { sendEmail } from "../utils/email";
 import config from "../config/config";
+import prisma from "../config/prisma";
 
 export async function register(data: RegisterDto): Promise<{ message: string }> {
     const existing = await authRepository.findUserByEmail(data.email);
@@ -54,11 +55,37 @@ export async function login(data: LoginDto): Promise<{ access: string; refresh: 
 
 export async function verifyEmail(uid: string, token: string): Promise<{ message: string }> {
     if (!uid || !token) throw new Error("Invalid verification link");
+
     const tokenHash = sha256(token.trim());
-    const ok = await authRepository.verifyEmailWithToken(uid, tokenHash);
-    if (!ok) throw new Error("Invalid or expired verification link");
+    const user = await prisma.user.findUnique({ where: { publicId: uid } });
+    if (!user) throw new Error("Invalid verification link");
+
+    // Already verified? Treat as success for a smooth UX
+    if (user.emailVerified) return { message: "Email already verified." };
+
+    // Must match the stored (hashed) token and be unexpired
+    const candidate = await prisma.user.findFirst({
+        where: {
+            publicId: uid,
+            emailToken: tokenHash,
+            emailTokenExpires: { gt: new Date() },
+        },
+    });
+    if (!candidate) throw new Error("Invalid or expired verification link");
+
+    await prisma.user.update({
+        where: { id: candidate.id },
+        data: {
+            emailVerified: true,
+            emailToken: null,
+            emailTokenExpires: null,
+            updatedAt: new Date(),
+        },
+    });
+
     return { message: "Email verified successfully. You can now log in." };
 }
+
 
 export async function resendVerification(email: string): Promise<{ message: string }> {
     const user = await authRepository.findUserByEmail(email);
@@ -68,7 +95,7 @@ export async function resendVerification(email: string): Promise<{ message: stri
     const { token, tokenHash, expiresAt } = generateEmailToken();
     await authRepository.setEmailVerification(user.id, tokenHash, expiresAt);
 
-    const verifyUrl = `${config.FRONTEND_URL}/api/auth/verify-email?uid=${encodeURIComponent(
+    const verifyUrl = `${config.FRONTEND_URL}/verify-email?uid=${encodeURIComponent(
         user.publicId
     )}&token=${encodeURIComponent(token)}`;
 

@@ -1,43 +1,47 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import client from "@/services/api/client";
+import { verifyEmail, resendVerification } from "@/services/auth/auth.service";
 
 const route = useRoute();
 const router = useRouter();
 
-const status = ref<"ok"|"error"|"pending">("pending");
-const message = ref("");
+const status = ref<"idle"|"ok"|"error">("idle");
+const msg = ref("");
 
 onMounted(async () => {
-  const uid = route.query.uid as string | undefined;
-  const token = route.query.token as string | undefined;
-
-  if (!uid || !token) {
-    status.value = "error";
-    message.value = "Invalid verification link.";
-    return;
-  }
+  const uid   = String(route.query.uid || "");
+  const token = String(route.query.token || "");
+  if (!uid || !token) { status.value = "error"; return; }
 
   try {
-    await client.post("/auth/verify-email", { uid, token }); // POST, not GET
+    const r = await verifyEmail(uid, token); // <-- POST
     status.value = "ok";
-    message.value = "Email verified! You can now log in.";
-  } catch (e: any) {
+    msg.value = r.message ?? "Email verified. You can now log in.";
+  } catch {
     status.value = "error";
-    message.value = e?.response?.data?.message ?? "Verification failed.";
+    msg.value = "Verification failed. Link may be invalid or expired.";
   }
 });
+
+async function doResend(email: string) {
+  await resendVerification(email);
+}
+function goLogin() { router.replace({ name: "auth-login" }); }
 </script>
 
 <template>
-  <main class="min-h-screen grid place-items-center p-6">
-    <div class="max-w-md w-full text-center space-y-3">
-      <h1 class="text-3xl font-heading">Email verification</h1>
-      <p v-if="status==='pending'">Verifying...</p>
-      <p v-else-if="status==='ok'" class="text-green-600">{{ message }}</p>
-      <p v-else class="text-red-600">{{ message }}</p>
-      <router-link class="underline" to="/login">Go to login</router-link>
+  <main class="grid place-items-center min-h-screen">
+    <div class="w-[520px] max-w-[90vw] p-6 rounded border bg-white">
+      <h2 class="text-xl font-heading mb-3">Verify Email</h2>
+
+      <p v-if="status==='ok'" class="text-green-600 mb-4">{{ msg }}</p>
+      <p v-else-if="status==='error'" class="text-red-600 mb-4">{{ msg }}</p>
+      <p v-else>Verifying…</p>
+
+      <div class="mt-4 flex gap-2" v-if="status!=='idle'">
+        <button class="px-3 py-1 rounded bg-black text-white" @click="goLogin">Back to login</button>
+      </div>
     </div>
   </main>
 </template>

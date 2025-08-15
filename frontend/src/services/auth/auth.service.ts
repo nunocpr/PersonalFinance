@@ -16,13 +16,13 @@ export async function register(payload: RegisterDto): Promise<{ message: string 
     return res.data;
 }
 
-export async function resendVerification(email: string): Promise<{ message: string }> {
-    const res = await client.post<{ message: string }>("/auth/resend-verification", { email });
+export async function verifyEmail(uid: string, token: string) {
+    const res = await client.post<{ message: string }>("/auth/verify-email", { uid, token });
     return res.data;
 }
 
-export async function verifyEmail(uid: string, token: string): Promise<{ message: string }> {
-    const res = await client.get<{ message: string }>("/auth/verify-email", { params: { uid, token } });
+export async function resendVerification(email: string): Promise<{ message: string }> {
+    const res = await client.post<{ message: string }>("/auth/resend-verification", { email });
     return res.data;
 }
 

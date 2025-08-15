@@ -10,13 +10,15 @@ import { useAuth } from "@/services/auth/auth.store";
 const app = createApp(App);
 const auth = useAuth();
 
-setupInterceptors({
-    onRefreshOk: () => { },
-    onRefreshFail: () => {
-        auth.clearSession({ remote: false });         // local-only
-        // stay on current page; router guard will allow /auth/login to render
+setupInterceptors(
+    {
+        onRefreshOk: () => { },
+        onRefreshFail: () => {
+            auth.clearSession({ remote: false });
+        }
     },
-});
+    router
+);
 
 app.use(router);
 app.mount("#app");

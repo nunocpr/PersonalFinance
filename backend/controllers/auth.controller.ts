@@ -99,31 +99,11 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 /**
- * GET /api/auth/verify-email?uid=...&token=...
- * For email links. Verifies then redirects to the frontend with a status.
- * We keep the message generic in the redirect to avoid leaking internals.
- */
-export const verifyEmail = async (req: Request, res: Response) => {
-    const { uid, token } = req.query as { uid?: string; token?: string };
-    try {
-        await authService.verifyEmail(uid || "", token || "");
-        const url = `${config.FRONTEND_URL}/verify-email?status=ok`;
-        res.redirect(302, url);
-    } catch (err) {
-        console.error("[auth] verifyEmail (GET) failed:", err);
-        const url = `${config.FRONTEND_URL}/verify-email?status=error&msg=${encodeURIComponent(
-            MSG.VERIFY_INVALID
-        )}`;
-        res.redirect(302, url);
-    }
-};
-
-/**
  * POST /api/auth/verify-email
  * Body: { uid: string, token: string }
  * For frontend-initiated verification (keeps token out of access logs).
  */
-export const verifyEmailPost = async (req: Request, res: Response) => {
+export const verifyEmail = async (req: Request, res: Response) => {
     const { uid, token } = req.body as { uid?: string; token?: string };
     try {
         await authService.verifyEmail(uid || "", token || "");
@@ -146,7 +126,6 @@ export const resendVerification = async (req: Request, res: Response) => {
         res.json({ message: MSG.RESEND_GENERIC });
     } catch (err) {
         console.error("[auth] resendVerification failed:", err);
-        // Still return generic message
         res.json({ message: MSG.RESEND_GENERIC });
     }
 };
