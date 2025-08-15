@@ -14,9 +14,9 @@ async function saveName() {
     savingName.value = true; nameMsg.value = ""; nameErr.value = "";
     const { user: updated } = await updateUserName(name.value);
     setSession(updated);
-    nameMsg.value = "Name updated.";
+    nameMsg.value = "Nome atualizado.";
   } catch (e: any) {
-    nameErr.value = e?.response?.data?.message ?? "Update failed";
+    nameErr.value = e?.response?.data?.message ?? "Falha ao atualizar o nome.";
   } finally { savingName.value = false; }
 }
 
@@ -27,10 +27,10 @@ async function savePassword() {
   try {
     savingPwd.value = true; pwdMsg.value = ""; pwdErr.value = "";
     await updateUserPassword({ current_password: current_password.value, new_password: new_password.value });
-    pwdMsg.value = "Password changed.";
+    pwdMsg.value = "Palavra-passe alterada.";
     current_password.value = ""; new_password.value = "";
   } catch (e: any) {
-    pwdErr.value = e?.response?.data?.message ?? "Update failed";
+    pwdErr.value = e?.response?.data?.message ?? "Falha ao alterar a palavra-passe.";
   } finally { savingPwd.value = false; }
 }
 </script>
@@ -38,12 +38,12 @@ async function savePassword() {
 <template>
   <div class="grid md:grid-cols-2 gap-8">
     <section class="bg-white rounded-2xl p-6 shadow-sm border">
-      <h2 class="font-heading text-xl mb-4">Profile</h2>
+      <h2 class="font-heading text-xl mb-4">Perfil</h2>
       <div class="space-y-3">
-        <label class="block text-sm text-gray-600">Display name</label>
+        <label class="block text-sm text-gray-600">Nome de apresentação</label>
         <input v-model="name" class="w-full border rounded px-3 py-2" />
         <button class="px-4 py-2 rounded bg-black text-white" :disabled="savingName" @click="saveName">
-          {{ savingName ? "Saving..." : "Save" }}
+          {{ savingName ? "A guardar…" : "Guardar" }}
         </button>
         <p v-if="nameMsg" class="text-green-600 text-sm">{{ nameMsg }}</p>
         <p v-if="nameErr" class="text-red-600 text-sm">{{ nameErr }}</p>
@@ -51,14 +51,14 @@ async function savePassword() {
     </section>
 
     <section class="bg-white rounded-2xl p-6 shadow-sm border">
-      <h2 class="font-heading text-xl mb-4">Change password</h2>
+      <h2 class="font-heading text-xl mb-4">Alterar palavra-passe</h2>
       <div class="space-y-3">
-        <label class="block text-sm text-gray-600">Current password</label>
+        <label class="block text-sm text-gray-600">Palavra-passe atual</label>
         <input v-model="current_password" type="password" class="w-full border rounded px-3 py-2" />
-        <label class="block text-sm text-gray-600">New password</label>
+        <label class="block text-sm text-gray-600">Nova palavra-passe</label>
         <input v-model="new_password" type="password" class="w-full border rounded px-3 py-2" />
         <button class="px-4 py-2 rounded bg-black text-white" :disabled="savingPwd" @click="savePassword">
-          {{ savingPwd ? "Updating..." : "Update password" }}
+          {{ savingPwd ? "A atualizar…" : "Atualizar palavra-passe" }}
         </button>
         <p v-if="pwdMsg" class="text-green-600 text-sm">{{ pwdMsg }}</p>
         <p v-if="pwdErr" class="text-red-600 text-sm">{{ pwdErr }}</p>

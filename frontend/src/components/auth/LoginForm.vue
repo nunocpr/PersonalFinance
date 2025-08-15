@@ -25,9 +25,9 @@ async function submit() {
     const data = e?.response?.data;
     if (status === 403 && data?.needsVerification) {
       needsVerification.value = true;
-      error.value = data?.message ?? "Please verify your email first.";
+      error.value = data?.message ?? "Por favor verifica o teu email primeiro.";
     } else {
-      error.value = data?.message ?? "Login failed";
+      error.value = data?.message ?? "Falha no início de sessão.";
     }
   } finally { loading.value = false; }
 }
@@ -35,31 +35,31 @@ async function submit() {
 async function resend() {
   try {
     await resendVerification(form.email);
-    error.value = "Verification email resent. Check your inbox.";
+    error.value = "Email de verificação reenviado. Verifica a tua caixa de entrada.";
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? "Could not resend verification.";
+    error.value = e?.response?.data?.message ?? "Não foi possível reenviar a verificação.";
   }
 }
 </script>
 
 <template>
   <form @submit.prevent="submit" class="max-w-sm w-full space-y-3">
-    <h2 class="text-2xl font-heading">Login</h2>
+    <h2 class="text-2xl font-heading">Iniciar sessão</h2>
     <input v-model="form.email" type="email" placeholder="Email" class="w-full border p-2 rounded" required />
-    <input v-model="form.password" type="password" placeholder="Password" class="w-full border p-2 rounded" required />
+    <input v-model="form.password" type="password" placeholder="Palavra-passe" class="w-full border p-2 rounded" required />
     <button class="w-full bg-black text-white py-2 rounded" :disabled="loading">
-      {{ loading ? "Logging in..." : "Login" }}
+      {{ loading ? "A entrar…" : "Entrar" }}
     </button>
     <p class="text-sm">
-      No account?
-      <a href="#" @click.prevent="emit('switch')" class="underline">Register</a>
+      Não tens conta?
+      <a href="#" @click.prevent="emit('switch')" class="underline">Registar</a>
     </p>
     <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     <button v-if="needsVerification" type="button" @click="resend" class="text-sm underline">
-      Resend verification email
+      Reenviar email de verificação
     </button>
     <p class="text-sm">
-      <router-link to="/forgot-password" class="underline">Forgot password?</router-link>
+      <router-link to="/auth/forgot" class="underline">Esqueces-te da tua palavra-passe?</router-link>
     </p>
   </form>
 </template>

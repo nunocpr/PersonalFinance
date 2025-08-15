@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue";
 import { useAccounts } from "@/services/accounts/accounts.store";
 import AccountModal from "./AccountModal.vue";
 import type { Account } from "@/types/accounts";
+import { formatEUR } from "@/utils/money";
 
 const { items, load, add, edit, remove } = useAccounts();
 
@@ -31,7 +32,7 @@ async function onSave(payload: any) {
 }
 
 async function onDelete(a: Account) {
-  if (confirm(`Delete account "${a.name}"? This cannot be undone.`)) {
+  if (confirm(`Apagar a conta "${a.name}"? Esta ação não pode ser anulada.`)) {
     await remove(a.id);
   }
 }
@@ -40,13 +41,13 @@ async function onDelete(a: Account) {
 <template>
   <section class="space-y-4">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-heading">Accounts</h2>
+      <h2 class="text-lg font-heading">Contas</h2>
       <button
         type="button"
         class="cursor-pointer px-3 py-1.5 rounded bg-black text-white"
         @click="openCreate"
       >
-        Add
+        Adicionar
       </button>
     </div>
 
@@ -59,17 +60,17 @@ async function onDelete(a: Account) {
         <div>
           <div class="font-medium">{{ a.name }}</div>
           <div class="text-sm text-gray-600">
-            {{ a.type }} • {{ a.balance.toFixed(2) }}
+            {{ a.type }} • {{ formatEUR(a.balance) }}
           </div>
           <div v-if="a.description" class="text-xs text-gray-500 mt-1">{{ a.description }}</div>
         </div>
         <div class="flex gap-2">
-          <button type="button" class="cursor-pointer px-2 py-1 rounded border" @click="openEdit(a)">Edit</button>
-          <button type="button" class="cursor-pointer px-2 py-1 rounded bg-red-600 text-white" @click="onDelete(a)">Delete</button>
+          <button type="button" class="cursor-pointer px-2 py-1 rounded border" @click="openEdit(a)">Editar</button>
+          <button type="button" class="cursor-pointer px-2 py-1 rounded bg-red-600 text-white" @click="onDelete(a)">Apagar</button>
         </div>
       </div>
 
-      <p v-if="!items.length" class="text-sm text-gray-600">No accounts yet. Create your first one.</p>
+      <p v-if="!items.length" class="text-sm text-gray-600">Ainda não tens contas. Cria a tua primeira conta.</p>
     </div>
 
     <AccountModal
