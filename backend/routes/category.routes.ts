@@ -1,16 +1,17 @@
 import { Router } from "express";
-import * as ctrl from "../controllers/category.controller";
 import { authenticate } from "../middlewares/auth";
+import * as ctrl from "../controllers/category.controller";
 
-const r = Router();
-r.use(authenticate);
+const router = Router();
 
-r.get("/", ctrl.listTree);
-r.post("/", ctrl.create);
-r.patch("/:id", ctrl.patch);       // rename/patch props
-r.post("/:id/move", ctrl.move);    // move to new parent (or root, parentId=null)
-r.post("/reorder", ctrl.reorder);  // reorder siblings
-r.post("/:id/archive", ctrl.archive);
-r.delete("/:id", ctrl.destroy);
+router.use(authenticate);
 
-export default r;
+router.get("/tree", ctrl.list);
+router.post("/", ctrl.create);
+router.patch("/:id", ctrl.update);
+router.patch("/:id/move", ctrl.move);
+router.patch("/reorder", ctrl.reorderSiblings);
+router.delete("/:id", ctrl.archive);
+router.delete("/:id/hard", ctrl.hardDelete);
+
+export default router;

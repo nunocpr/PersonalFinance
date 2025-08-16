@@ -1,74 +1,103 @@
-// src/controllers/category.controller.ts
-import { Request, Response } from "express";
-import * as service from "../services/category.service";
+import { RequestHandler } from "express";
+import * as repo from "../repositories/category.repository";
 
-export const listTree = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
-    const data = await service.listTree(uid);
-    res.json({ categories: data });
+// GET /api/categories/tree
+export const list: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const items = await repo.listTree(req.user.publicId);
+    return res.json(items); // <= return the array, not { items }
 };
 
-export const create = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
-    try {
-        const c = await service.create(uid, req.body);
-        res.status(201).json(c);
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Failed to create category" });
-    }
+
+// POST /api/categories
+export const create: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const payload = {
+        name: String(req.body?.name || "").trim(),
+        description: req.body?.description ?? null,
+        parentId: req.body?.parentId ?? null,
+        sortOrder: req.body?.sortOrder ?? undefined,
+        icon: req.body?.icon ?? null,
+        color: req.body?.color ?? null,
+        type: req.body?.type ?? "expense",
+    };
+
+    if (!payload.name) return res.status(400).json({ message: "Nome obrigatório" });
+
+    const created = await repo.create(req.user.publicId, payload);
+    res.status(201).json(created);
 };
 
-export const patch = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
+// PATCH /api/categories/:id
+export const update: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const id = Number(req.params.id);
-    try {
-        const c = await service.patch(uid, id, req.body);
-        res.json(c);
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Failed to update" });
-    }
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "ID inválido" });
+
+    const patch = {
+        name: req.body?.name,
+        description: req.body?.description,
+        icon: req.body?.icon,
+        color: req.body?.color,
+        type: req.body?.type,
+        archived: req.body?.archived,
+    };
+
+    const updated = await repo.update(req.user.publicId, id, patch as any);
+    res.json(updated);
 };
 
-export const move = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
+// PATCH /api/categories/:id/move
+export const move: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const id = Number(req.params.id);
-    const { parentId } = req.body as { parentId: number | null };
-    try {
-        const c = await service.move(uid, id, parentId ?? null);
-        res.json(c);
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Failed to move" });
+    const parentId = req.body?.parentId ?? null;
+
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "ID inválido" });
+    if (parentId !== null && !Number.isInteger(parentId)) {
+        return res.status(400).json({ message: "parentId inválido" });
     }
+
+    const moved = await repo.move(req.user.publicId, id, parentId);
+    res.json(moved);
 };
 
-export const reorder = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
-    try {
-        await service.reorder(uid, req.body);
-        res.json({ ok: true });
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Failed to reorder" });
+// PATCH /api/categories/reorder
+export const reorderSiblings: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const parentId = req.body?.parentId ?? null;
+    const orderedIds: number[] = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : [];
+
+    if (parentId !== null && !Number.isInteger(parentId)) {
+        return res.status(400).json({ message: "parentId inválido" });
     }
+    if (!orderedIds.every((x) => Number.isInteger(x))) {
+        return res.status(400).json({ message: "orderedIds inválidos" });
+    }
+
+    await repo.reorderSiblings(req.user.publicId, parentId, orderedIds);
+    res.json({ ok: true });
 };
 
-export const archive = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
+// DELETE /api/categories/:id (arquivar)
+export const archive: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const id = Number(req.params.id);
-    try {
-        const c = await service.archive(uid, id);
-        res.json(c);
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Failed to archive" });
-    }
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "ID inválido" });
+
+    const updated = await repo.archive(req.user.publicId, id);
+    res.json(updated);
 };
 
-export const destroy = async (req: Request, res: Response) => {
-    const uid = req.user!.publicId;
+// DELETE /api/categories/:id/hard (apagar definitivo)
+export const hardDelete: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const id = Number(req.params.id);
-    try {
-        await service.hardDelete(uid, id);
-        res.status(204).send();
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Failed to delete" });
-    }
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "ID inválido" });
+
+    await repo.hardDelete(req.user.publicId, id);
+    res.status(204).send();
 };

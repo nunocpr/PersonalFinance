@@ -22,9 +22,10 @@ const routes = [
         component: DashboardLayout,
         meta: { requiresAuth: true },
         children: [
-            { path: "", name: "dashboard", component: () => import("@/views/dashboard/DashboardView.vue") },
-            { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue") },
-            { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue") },
+            { path: "", name: "dashboard", component: () => import("@/views/dashboard/DashboardView.vue"), meta: { title: "Painel" } },
+            { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue"), meta: { title: "Contas" } },
+            { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue"), meta: { title: "Perfil" } },
+            { path: "categories", name: "categories", component: () => import("@/views/dashboard/CategoriesView.vue"), meta: { title: "Categorias" } },
         ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/auth/login" },

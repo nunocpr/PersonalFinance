@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: "ProfileView" });
+
 import { ref } from "vue";
 import { useAuth } from "@/services/auth/auth.store";
 import { updateUserName, updateUserPassword } from "@/services/users/user.service";

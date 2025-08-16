@@ -8,10 +8,16 @@ const route = useRoute();
 const router = useRouter();
 
 const nav = [
-  { name: "Painel",   to: { name: "dashboard" }, icon: "🏠" },
-  { name: "Contas",   to: { name: "accounts" },  icon: "🏦" },
-  { name: "Perfil",   to: { name: "profile" },   icon: "👤" },
+  { name: "Painel",   to: { name: "dashboard" },  icon: "🏠" },
+  { name: "Contas",   to: { name: "accounts" },   icon: "🏦" },
+  { name: "Perfil",   to: { name: "profile" },    icon: "👤" },
+  { name: "Categorias", to: { name: "categories" }, icon: "🗂️" },
 ];
+
+// Build a fast lookup (route name -> PT label)
+const TITLE_MAP = new Map<string, string>(
+  nav.map(item => [String(item.to.name), item.name])
+);
 
 const isActive = (to: any) => route.name === to.name;
 
@@ -31,11 +37,19 @@ const initial = computed(() =>
 );
 const displayName = computed(() => user?.value?.name || user?.value?.email);
 
-const pageTitle = computed(() => {
-  const key = String(route.name ?? "");
-  const hit = nav.find(i => String(i.to?.name ?? "") === key);
+const currentTitle = computed(() => {
+  const name = route.name ? String(route.name) : "";
+  if (name && TITLE_MAP.has(name)) return TITLE_MAP.get(name)!;
 
-  return hit?.name ?? key.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  // deepest matched meta.title
+  for (let i = route.matched.length - 1; i >= 0; i--) {
+    const rec = route.matched[i];
+    if (rec.meta?.title) return String(rec.meta.title);
+    const recName = rec.name ? String(rec.name) : "";
+    if (recName && TITLE_MAP.has(recName)) return TITLE_MAP.get(recName)!;
+  }
+
+  return name.replaceAll("-", " "); // final fallback
 });
 
 async function doLogout() {
@@ -102,15 +116,14 @@ async function doLogout() {
     </aside>
 
     <section class="min-h-0 flex flex-col overflow-hidden">
-      <header :class="['bg-white border-b border-gray-200 sticky top-0 z-10 px-12 flex items-center', HEADER_H]">
-        <h1 class="font-heading text-lg capitalize">
-          {{ pageTitle }}
-        </h1>
-      </header>
-
-      <main class="flex-1 overflow-auto px-12 py-8">
-        <RouterView />
-      </main>
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-10 px-12 flex items-center h-16">
+        <h1 class="font-heading text-lg">{{ currentTitle }}</h1>
+        </header>
+        <main class="flex-1 overflow-auto px-12 py-6">
+            <RouterView v-slot="{ Component, route }">
+                <component :is="Component" :key="route.fullPath" />
+            </RouterView>
+        </main>
     </section>
   </div>
 </template>

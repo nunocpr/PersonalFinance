@@ -1,4 +1,5 @@
 <script setup lang="ts">
+defineOptions({ name: "AccountsView" });
 import AccountsSection from "@/components/accounts/AccountsSection.vue";
 </script>
 

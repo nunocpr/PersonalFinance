@@ -1,27 +1,62 @@
 import * as repo from "../repositories/category.repository";
-import { CreateCategoryDto, UpdateCategoryDto, ReorderSiblingsDto } from "../types/category";
+import type { Category } from "../generated/prisma";
+import type { CreateCategoryInput } from "../repositories/category.repository";
 
-export const listTree = (userId: string) => repo.listTree(userId);
+export const VALID_KINDS = ["expense", "income", "transfer"] as const;
+export type CategoryKind = typeof VALID_KINDS[number];
 
-export const create = (userId: string, dto: CreateCategoryDto) => {
-    return repo.create(userId, dto);
-};
+export async function getTree(userPublicId: string): Promise<Category[]> {
+    return repo.listTree(userPublicId);
+}
 
-export const rename = (userId: string, id: number, name: string) => {
-    return repo.update(userId, id, { name });
-};
+export async function create(
+    userPublicId: string,
+    input: CreateCategoryInput
+): Promise<Category> {
+    if (!input.name?.trim()) throw new Error("Nome obrigatório");
+    if (input.type && !VALID_KINDS.includes(input.type as CategoryKind)) {
+        throw new Error("Tipo inválido");
+    }
+    return repo.create(userPublicId, input);
+}
 
-export const patch = (userId: string, id: number, dto: UpdateCategoryDto) => {
-    return repo.update(userId, id, dto);
-};
+export async function update(
+    userPublicId: string,
+    id: number,
+    patch: Partial<Pick<Category, "name" | "description" | "icon" | "color" | "type" | "archived">>
+): Promise<Category> {
+    if (patch.type && !VALID_KINDS.includes(patch.type as CategoryKind)) {
+        throw new Error("Tipo inválido");
+    }
+    if (patch.name != null && !String(patch.name).trim()) {
+        throw new Error("Nome inválido");
+    }
+    return repo.update(userPublicId, id, patch);
+}
 
-export const move = (userId: string, id: number, parentId: number | null) => {
-    return repo.move(userId, id, parentId);
-};
+export async function move(
+    userPublicId: string,
+    id: number,
+    newParentId: number | null
+): Promise<Category> {
+    return repo.move(userPublicId, id, newParentId);
+}
 
-export const reorder = (userId: string, dto: ReorderSiblingsDto) => {
-    return repo.reorderSiblings(userId, dto.parentId ?? null, dto.orderedIds);
-};
+export async function reorder(
+    userPublicId: string,
+    parentId: number | null,
+    orderedIds: number[]
+): Promise<void> {
+    if (!Array.isArray(orderedIds) || !orderedIds.every(Number.isInteger)) {
+        throw new Error("orderedIds inválidos");
+    }
+    return repo.reorderSiblings(userPublicId, parentId, orderedIds);
+}
 
-export const archive = (userId: string, id: number) => repo.archive(userId, id);
-export const hardDelete = (userId: string, id: number) => repo.hardDelete(userId, id);
+export async function archive(userPublicId: string, id: number): Promise<Category> {
+    return repo.archive(userPublicId, id);
+}
+
+export async function hardDelete(userPublicId: string, id: number): Promise<void> {
+    return repo.hardDelete(userPublicId, id);
+}

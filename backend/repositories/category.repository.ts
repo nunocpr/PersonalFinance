@@ -1,19 +1,24 @@
-// src/repositories/category.repository.ts
-import { PrismaClient, Prisma } from "../generated/prisma";
-const prisma = new PrismaClient();
+import prisma from "../config/prisma";
+import type { Prisma, Category } from "../generated/prisma";
 
-type CreateCategoryInput = {
+// Input shape the controller/service will pass in
+export type CreateCategoryInput = {
     name: string;
     description?: string | null;
     parentId?: number | null;
-    sortOrder?: number;
+    sortOrder?: number; // optional: auto-calc if missing
     icon?: string | null;
     color?: string | null;
     type?: "expense" | "income" | "transfer";
 };
 
-// Read the tree (roots + children), scoped by user
-export async function listTree(userPublicId: string) {
+/**
+ * Árvore de categorias (apenas 2 níveis, já respeitado por trigger)
+ * - Só não arquivadas
+ * - Ordenadas por sortOrder
+ * - Filhos dentro de cada root
+ */
+export async function listTree(userPublicId: string): Promise<Category[]> {
     return prisma.category.findMany({
         where: { archived: false, parentId: null, user: { publicId: userPublicId } },
         orderBy: { sortOrder: "asc" },
@@ -26,102 +31,100 @@ export async function listTree(userPublicId: string) {
     });
 }
 
-// Create category (checked input with nested connects)
-export async function create(userPublicId: string, data: CreateCategoryInput) {
-    // compute sort order within the destination level
+/**
+ * Cria root OU subcategoria.
+ * - Se sortOrder não for enviado, é calculado (max + 1) nos irmãos do destino.
+ */
+export async function create(
+    userPublicId: string,
+    data: CreateCategoryInput
+): Promise<Category> {
     let sortOrder = data.sortOrder;
+
     if (sortOrder == null) {
         const max = await prisma.category.aggregate({
             _max: { sortOrder: true },
             where: {
                 user: { publicId: userPublicId },
-                parent: data.parentId != null ? { id: data.parentId } : { is: null },
+                parentId: data.parentId ?? null,
             },
         });
         sortOrder = (max._max.sortOrder ?? -1) + 1;
     }
 
-    const payload = {
+    const payload: Prisma.CategoryCreateInput = {
         name: data.name,
         description: data.description ?? null,
         sortOrder,
         icon: data.icon ?? null,
         color: data.color ?? null,
-        type: data.type ?? "expense",
-        user: { connect: { publicId: userPublicId } }, // nested relation
-        parent: data.parentId != null ? { connect: { id: data.parentId } } : undefined, // nested relation
-    } satisfies Prisma.CategoryCreateInput;
+        type: (data.type as any) ?? "expense",
+        user: { connect: { publicId: userPublicId } },
+        ...(data.parentId != null
+            ? { parent: { connect: { id: data.parentId } } }
+            : {}),
+    };
 
     return prisma.category.create({ data: payload });
 }
 
-// Update scalar props (no relation changes here)
+/**
+ * Atualiza propriedades seguras (name, description, icon, color, type, archived).
+ * - Escopado por userPublicId para não depender do userId interno.
+ */
 export async function update(
     userPublicId: string,
     id: number,
-    patch: Prisma.CategoryUpdateManyMutationInput // scalar fields only
-) {
+    patch: Partial<Pick<Category, "name" | "description" | "icon" | "color" | "type" | "archived">>
+): Promise<Category> {
     const { count } = await prisma.category.updateMany({
         where: { id, user: { publicId: userPublicId } },
         data: patch,
     });
     if (count === 0) throw new Error("Category not found.");
-    return prisma.category.findFirstOrThrow({ where: { id, user: { publicId: userPublicId } } });
+
+    return prisma.category.findFirstOrThrow({
+        where: { id, user: { publicId: userPublicId } },
+    });
 }
 
-// Move to a new parent (or root). Use nested parent connect/disconnect.
+/**
+ * Move para novo parentId (ou root=null) e atribui novo sortOrder no destino.
+ * - Duas camadas já são validadas via trigger no DB.
+ */
 export async function move(
     userPublicId: string,
     id: number,
     newParentId: number | null
-) {
+): Promise<Category> {
     return prisma.$transaction(async (tx) => {
-        // ensure the category belongs to the user
+        // ownership
         const cat = await tx.category.findFirst({
             where: { id, user: { publicId: userPublicId } },
-            select: { id: true },
         });
         if (!cat) throw new Error("Category not found.");
 
-        // if setting a new parent, ensure it also belongs to the user
-        if (newParentId != null) {
-            const parent = await tx.category.findFirst({
-                where: { id: newParentId, user: { publicId: userPublicId } },
-                select: { id: true },
-            });
-            if (!parent) throw new Error("Parent category not found.");
-        }
-
-        // compute sort order at destination level
         const max = await tx.category.aggregate({
             _max: { sortOrder: true },
-            where: {
-                user: { publicId: userPublicId },
-                parent: newParentId != null ? { id: newParentId } : { is: null },
-            },
+            where: { parentId: newParentId, user: { publicId: userPublicId } },
         });
-        const newOrder = (max._max.sortOrder ?? -1) + 1;
+        const newSort = (max._max.sortOrder ?? -1) + 1;
 
-        // update using nested relation for parent
         return tx.category.update({
             where: { id },
-            data: {
-                sortOrder: newOrder,
-                parent:
-                    newParentId != null
-                        ? { connect: { id: newParentId } }
-                        : { disconnect: true },
-            },
+            data: { parentId: newParentId, sortOrder: newSort },
         });
     });
 }
 
-// Reorder siblings at one level (keep scalar where filter; it’s fine for mass updates)
+/**
+ * Reordenar irmãos no mesmo nível (root parentId=null ou children num parentId específico).
+ */
 export async function reorderSiblings(
     userPublicId: string,
     parentId: number | null,
     orderedIds: number[]
-) {
+): Promise<void> {
     await prisma.$transaction(
         orderedIds.map((id, idx) =>
             prisma.category.updateMany({
@@ -132,24 +135,38 @@ export async function reorderSiblings(
     );
 }
 
-// Archive (soft hide)
-export async function archive(userPublicId: string, id: number) {
+/**
+ * Arquivar (soft hide). Mantemos o registo e a integridade.
+ */
+export async function archive(
+    userPublicId: string,
+    id: number
+): Promise<Category> {
     const { count } = await prisma.category.updateMany({
         where: { id, user: { publicId: userPublicId } },
         data: { archived: true },
     });
     if (count === 0) throw new Error("Category not found.");
-    return prisma.category.findFirstOrThrow({ where: { id, user: { publicId: userPublicId } } });
+
+    return prisma.category.findFirstOrThrow({
+        where: { id, user: { publicId: userPublicId } },
+    });
 }
 
-// Hard delete with safety checks
-export async function hardDelete(userPublicId: string, id: number) {
-    return prisma.$transaction(async (tx) => {
-        const cat = await tx.category.findFirst({
+/**
+ * Apagar definitivo.
+ * - Bloqueia se tiver filhos
+ * - Bloqueia se estiver usada por transações
+ */
+export async function hardDelete(
+    userPublicId: string,
+    id: number
+): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+        const owned = await tx.category.findFirst({
             where: { id, user: { publicId: userPublicId } },
-            select: { id: true },
         });
-        if (!cat) throw new Error("Category not found.");
+        if (!owned) throw new Error("Category not found.");
 
         const kids = await tx.category.count({
             where: { parentId: id, user: { publicId: userPublicId } },

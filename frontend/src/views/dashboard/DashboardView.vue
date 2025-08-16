@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: "DashboardView" });
+
 import { onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAccounts } from "@/services/accounts/accounts.store";
