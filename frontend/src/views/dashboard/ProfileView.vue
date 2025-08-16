@@ -36,13 +36,17 @@ async function savePassword() {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-2 gap-8">
-    <section class="bg-white rounded-2xl p-6 shadow-sm border">
+  <div class="grid md:grid-cols-3 gap-12 items-stretch">
+    <section class="bg-white rounded-md p-6 shadow-sm border flex flex-col">
       <h2 class="font-heading text-xl mb-4">Perfil</h2>
-      <div class="space-y-3">
+      <div class="space-y-3 flex flex-col flex-grow">
         <label class="block text-sm text-gray-600">Nome de apresentação</label>
-        <input v-model="name" class="w-full border rounded px-3 py-2" />
-        <button class="px-4 py-2 rounded bg-black text-white" :disabled="savingName" @click="saveName">
+        <input v-model="name" class="w-full border rounded px-3 py-2 max-w-96" />
+        
+        <!-- Spacer pushes button down -->
+        <div class="flex-grow"></div>
+
+        <button class="px-4 py-2 rounded bg-black text-white self-start" :disabled="savingName" @click="saveName">
           {{ savingName ? "A guardar…" : "Guardar" }}
         </button>
         <p v-if="nameMsg" class="text-green-600 text-sm">{{ nameMsg }}</p>
@@ -50,14 +54,18 @@ async function savePassword() {
       </div>
     </section>
 
-    <section class="bg-white rounded-2xl p-6 shadow-sm border">
+    <section class="bg-white rounded-md p-6 shadow-sm border flex flex-col">
       <h2 class="font-heading text-xl mb-4">Alterar palavra-passe</h2>
-      <div class="space-y-3">
+      <div class="space-y-3 flex flex-col flex-grow">
         <label class="block text-sm text-gray-600">Palavra-passe atual</label>
-        <input v-model="current_password" type="password" class="w-full border rounded px-3 py-2" />
+        <input v-model="current_password" type="password" class="w-full border rounded px-3 py-2 max-w-96" />
         <label class="block text-sm text-gray-600">Nova palavra-passe</label>
-        <input v-model="new_password" type="password" class="w-full border rounded px-3 py-2" />
-        <button class="px-4 py-2 rounded bg-black text-white" :disabled="savingPwd" @click="savePassword">
+        <input v-model="new_password" type="password" class="w-full border rounded px-3 py-2 max-w-96" />
+        
+        <!-- Spacer pushes button down -->
+        <div class="flex-grow"></div>
+
+        <button class="px-4 py-2 rounded bg-black text-white self-start" :disabled="savingPwd" @click="savePassword">
           {{ savingPwd ? "A atualizar…" : "Atualizar palavra-passe" }}
         </button>
         <p v-if="pwdMsg" class="text-green-600 text-sm">{{ pwdMsg }}</p>

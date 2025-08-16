@@ -40,37 +40,35 @@ async function onDelete(a: Account) {
 
 <template>
   <section class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-heading">Contas</h2>
-      <button
-        type="button"
-        class="cursor-pointer px-3 py-1.5 rounded bg-black text-white"
-        @click="openCreate"
-      >
-        Adicionar
-      </button>
-    </div>
-
-    <div class="grid gap-3">
-      <div
-        v-for="a in items"
-        :key="a.id"
-        class="rounded border bg-white p-3 flex items-center justify-between"
-      >
-        <div>
-          <div class="font-medium">{{ a.name }}</div>
-          <div class="text-sm text-gray-600">
-            {{ a.type }} • {{ formatEUR(a.balance) }}
-          </div>
-          <div v-if="a.description" class="text-xs text-gray-500 mt-1">{{ a.description }}</div>
+      
+      <div class="grid gap-3">
+          <div
+          v-for="a in items"
+          :key="a.id"
+          class="rounded border bg-white p-3 flex items-center justify-between"
+          >
+          <div>
+              <div class="font-medium">{{ a.name }}</div>
+              <div class="text-sm text-gray-600">
+                  {{ a.type }} • {{ formatEUR(a.balance) }}
+                </div>
+                <div v-if="a.description" class="text-xs text-gray-500 mt-1">{{ a.description }}</div>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" class="cursor-pointer px-2 py-1 rounded border" @click="openEdit(a)">Editar</button>
+                <button type="button" class="cursor-pointer px-2 py-1 rounded bg-red-600 text-white" @click="onDelete(a)">Apagar</button>
+            </div>
         </div>
-        <div class="flex gap-2">
-          <button type="button" class="cursor-pointer px-2 py-1 rounded border" @click="openEdit(a)">Editar</button>
-          <button type="button" class="cursor-pointer px-2 py-1 rounded bg-red-600 text-white" @click="onDelete(a)">Apagar</button>
+        <div class="flex flex-col items-center gap-y-6 mt-12">
+            <p v-if="!items.length" class="text-sm text-gray-600">Ainda não tens contas. Cria a tua primeira conta.</p>
+            <button
+            type="button"
+            class="cursor-pointer px-3 py-1.5 rounded bg-black text-white"
+            @click="openCreate"
+            >
+            Adicionar
+            </button>
         </div>
-      </div>
-
-      <p v-if="!items.length" class="text-sm text-gray-600">Ainda não tens contas. Cria a tua primeira conta.</p>
     </div>
 
     <AccountModal

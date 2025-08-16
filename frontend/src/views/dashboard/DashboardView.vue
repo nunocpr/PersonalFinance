@@ -26,10 +26,10 @@ function irParaContas() {
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="space-y-6">
     <h2 class="text-lg font-heading">Escolha uma conta</h2>
 
-    <div v-if="!items.length" class="rounded border bg-white p-4">
+    <div v-if="!items.length" class="rounded border bg-white p-4 drop-shadow-lg">
       <p class="mb-3 text-gray-700">Ainda não tens contas criadas.</p>
       <button class="px-3 py-1.5 rounded bg-black text-white" @click="irParaContas">
         Cria a tua primeira conta
@@ -40,7 +40,7 @@ function irParaContas() {
       <button
         v-for="a in items"
         :key="a.id"
-        class="cursor-pointer text-left rounded border bg-white p-3 hover:border-black"
+        class="cursor-pointer text-left rounded border bg-white p-3 hover:border-black drop-shadow-lg"
         :class="activeId === a.id ? 'border-black ring-1 ring-black' : ''"
         @click="setActive(a.id)"
       >

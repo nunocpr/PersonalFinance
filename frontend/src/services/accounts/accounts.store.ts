@@ -4,6 +4,7 @@ import type { Account, CreateAccountDto, UpdateAccountDto } from "@/types/accoun
 
 const items = ref<Account[]>([]);
 const loaded = ref(false);
+const loading = ref(false);
 
 const ACTIVE_KEY = "pf_active_account";
 const activeId = ref<number | null>(null);
@@ -20,19 +21,22 @@ function setActive(id: number | null) {
 
 export function useAccounts() {
     async function load(force = false) {
+        if (loading.value) return;
         if (loaded.value && !force) return;
-        items.value = await AccountService.list();
-        loaded.value = true;
+        loading.value = true;
+        try {
+            items.value = await AccountService.list();
+            loaded.value = true;
 
-        if (activeId.value == null) {
             const saved = localStorage.getItem(ACTIVE_KEY);
-            if (saved) activeId.value = Number(saved);
-        }
-        if (activeId.value != null && !items.value.some((a) => a.id === activeId.value)) {
-            setActive(items.value[0]?.id ?? null);
+            if (activeId.value == null && saved) activeId.value = Number(saved);
+            if (activeId.value != null && !items.value.some(a => a.id === activeId.value)) {
+                setActive(items.value[0]?.id ?? null);
+            }
+        } finally {
+            loading.value = false;          // <-- novo
         }
     }
-
     async function add(payload: CreateAccountDto) {
         const a = await AccountService.create(payload);
         items.value.push(a);

@@ -108,7 +108,7 @@ async function doLogout() {
         </h1>
       </header>
 
-      <main class="flex-1 overflow-auto px-12 py-6">
+      <main class="flex-1 overflow-auto px-12 py-8">
         <RouterView />
       </main>
     </section>
