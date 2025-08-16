@@ -19,6 +19,19 @@ function setActive(id: number | null) {
     else localStorage.setItem(ACTIVE_KEY, String(id));
 }
 
+const ACCOUNT_TYPE_LABELS_PT: Record<string, string> = {
+    checking: "Conta à ordem",
+    savings: "Poupança",
+    credit: "Crédito",
+    investment: "Investimento",
+    other: "Outro",
+};
+
+function getAccountTypeLabelPt(type?: string | null) {
+    const key = (type ?? "").toLowerCase();
+    return ACCOUNT_TYPE_LABELS_PT[key] ?? (type ?? "");
+}
+
 export function useAccounts() {
     async function load(force = false) {
         if (loading.value) return;
@@ -55,5 +68,17 @@ export function useAccounts() {
         if (activeId.value === id) setActive(items.value[0]?.id ?? null);
     }
 
-    return { items, loaded, activeId, activeAccount, setActive, load, add, edit, remove };
+    return {
+        items,
+        loaded,
+        activeId,
+        activeAccount,
+        setActive,
+        load,
+        add,
+        edit,
+        remove,
+        accountTypeLabelsPt: ACCOUNT_TYPE_LABELS_PT as Readonly<Record<string, string>>,
+        getAccountTypeLabelPt,
+    };
 }

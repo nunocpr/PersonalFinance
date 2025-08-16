@@ -26,6 +26,7 @@ const routes = [
             { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue"), meta: { title: "Contas" } },
             { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue"), meta: { title: "Perfil" } },
             { path: "categories", name: "categories", component: () => import("@/views/dashboard/CategoriesView.vue"), meta: { title: "Categorias" } },
+            { path: "transactions", name: "transactions", component: () => import("@/views/dashboard/TransactionsView.vue"), meta: { title: "Transacções" } },
         ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/auth/login" },

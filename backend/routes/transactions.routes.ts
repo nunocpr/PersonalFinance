@@ -1,11 +1,14 @@
 // routes/transactions.routes.ts
-import { Router } from 'express';
-import { getTransactions, createTransaction } from '../controllers/transactions.controller';
-import { authenticate } from '../middlewares/auth';
+import { Router } from "express";
+import { authenticate } from "../middlewares/auth";
+import * as ctrl from "../controllers/transactions.controller";
 
 const router = Router();
+router.use(authenticate);
 
-router.get('/', authenticate, getTransactions);
-router.post('/', authenticate, createTransaction);
+router.get("/", ctrl.list);
+router.post("/", ctrl.create);
+router.put("/:id", ctrl.update);
+router.delete("/:id", ctrl.remove);
 
 export default router;

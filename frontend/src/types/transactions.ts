@@ -1,27 +1,46 @@
-// src/types/transaction.ts
-export interface Transaction {
-    transaction_id: string;
-    transaction_date: string;
-    transaction_amount: number; // in cents
-    transaction_description: string;
-    transaction_category_id?: number;
-    transaction_is_saving: boolean;
-    transaction_account_id: number;
-    transaction_income_source_id?: number;
-    transaction_recurring_transaction_id?: string;
-    transaction_created_at?: string;
-    transaction_updated_at?: string;
-}
-
+// src/types/transactions.ts
 export interface Transaction {
     id: string;
     date: string;
-    amount: number; // in cents
+    amount: number;
     description: string;
     isSaving: boolean;
-    categoryId?: number;
+    notes: string | null;
     accountId: number;
+    categoryId: number | null;
+    incomeSourceId: number | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
-export type CreateTransactionDto = Omit<Transaction, 'id'>;
-export type UpdateTransactionDto = Partial<CreateTransactionDto>;
+export interface TxListResponse {
+    items: Transaction[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
+export interface TxFilters {
+    page?: number;
+    pageSize?: number;
+    accountId?: number;
+    categoryId?: number;
+    from?: string;
+    to?: string;
+    q?: string;
+    sortBy?: "date" | "amount" | "createdAt";
+    sortDir?: "asc" | "desc";
+}
+
+export interface TxCreateDto {
+    date?: string;
+    amount: number;
+    description: string;
+    accountId: number;
+    categoryId?: number | null;
+    incomeSourceId?: number | null;
+    isSaving?: boolean;
+    notes?: string | null;
+}
+
+export type TxUpdateDto = Partial<TxCreateDto>;

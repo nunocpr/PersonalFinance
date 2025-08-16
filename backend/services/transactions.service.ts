@@ -1,14 +1,8 @@
-import * as transactionRepository from '../repositories/transactions.repository';
-import { type Transaction } from '../types/transactions';
+// services/transactions.service.ts
+import * as repo from "../repositories/transactions.repository";
+import type { ListFilters, CreateInput, UpdateInput } from "../types/transactions";
 
-export const getAllTransactions = async () => {
-    return await transactionRepository.findAll();
-};
-
-export const createTransaction = async (transactionData: Transaction) => {
-    // Add business logic here
-    if (transactionData.transaction_amount <= 0) {
-        throw new Error('Amount must be positive');
-    }
-    return await transactionRepository.create(transactionData);
-};
+export const list = (userPublicId: string, f: ListFilters) => repo.list(userPublicId, f);
+export const create = (userPublicId: string, dto: CreateInput) => repo.create(userPublicId, dto);
+export const update = (userPublicId: string, id: string, patch: UpdateInput) => repo.update(userPublicId, id, patch);
+export const remove = (userPublicId: string, id: string) => repo.remove(userPublicId, id);
