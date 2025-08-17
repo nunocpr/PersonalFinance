@@ -3,7 +3,6 @@ import * as authService from "../services/auth.service";
 import * as authRepo from "../repositories/auth.repository";
 import config from "../config/config";
 import { signAccess, verifyRefresh } from "../utils/jwt";
-import { UserDto } from "../types/auth";
 
 const MSG = {
     REGISTER_DUPLICATE: "Email already registered",
@@ -82,8 +81,6 @@ export const refresh = async (req: Request, res: Response) => {
         return res.status(401).json({ message: "Unauthorized" });
     }
 };
-
-
 
 export const logout = async (req: Request, res: Response) => {
     try {

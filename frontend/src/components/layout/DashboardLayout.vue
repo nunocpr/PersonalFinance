@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, onBeforeUnmount } from "vue";
 import { useAuth } from "@/services/auth/auth.store";
 import { useRoute, useRouter } from "vue-router";
 import { useAccounts } from "@/services/accounts/accounts.store";
-import { formatCentsEUR } from "@/utils/money";
-import { Eye, EyeOff, Wallet } from "lucide-vue-next";
 import AccountPicker from "@/components/accounts/AccountPicker.vue";
 
 
@@ -16,7 +14,6 @@ const router = useRouter();
 const nav = [
     { name: "Painel", to: { name: "dashboard" }, icon: "🏠" },
     { name: "Contas", to: { name: "accounts" }, icon: "🏦" },
-    { name: "Perfil", to: { name: "profile" }, icon: "👤" },
     { name: "Categorias", to: { name: "categories" }, icon: "🗂️" },
     { name: "Transacções", to: { name: "transactions" }, icon: "💳" },
 ];
@@ -46,33 +43,33 @@ function toggleSidebar() {
 }
 
 const asideWidth = computed(() => (collapsed.value ? "4rem" : "16rem"));
-const initial = computed(() => (user?.value?.name || user?.value?.email || "?").slice(0, 1).toUpperCase());
-const displayName = computed(() => user?.value?.name || user?.value?.email);
+
+// --- user display helpers
+const initial = computed(() =>
+    (user?.value?.name || user?.value?.email || "?").slice(0, 1).toUpperCase()
+);
+const displayName = computed(() => user?.value?.name || user?.value?.email || "");
+const firstName = computed(() => (displayName.value.split(" ")[0] || displayName.value));
+
+// --- user dropdown state
+const userMenuOpen = ref(false);
+const menuRef = ref<HTMLElement | null>(null);
+
+function toggleUserMenu() { userMenuOpen.value = !userMenuOpen.value; }
+function closeUserMenu() { userMenuOpen.value = false; }
+
+// click-outside to close
+function onDocClick(e: MouseEvent) {
+    if (!userMenuOpen.value) return;
+    const el = menuRef.value;
+    if (el && !el.contains(e.target as Node)) closeUserMenu();
+}
+onMounted(() => document.addEventListener("click", onDocClick));
+onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
 // ── Accounts in header ──────────────────────────────────────
-const { items: accounts, activeId, setActive, load, loaded } = useAccounts();
+const { items: accounts, activeId, load, loaded } = useAccounts();
 onMounted(() => { load(); });
-
-// account selector v-model
-const selectedAccountId = computed<number | 0>({
-    get: () => activeId.value ?? 0,
-    set: (v) => setActive(v || null),
-});
-
-const activeAccount = computed(() => accounts.value.find(a => a.id === activeId.value) || null);
-
-const totalBalance = computed(() =>
-    accounts.value.reduce((sum, a) => sum + (a.balance ?? 0), 0)
-    // If your balances are in cents: `sum + (a.balance ?? 0) / 100`
-);
-
-// visibility toggle (persisted)
-const SHOW_KEY = "pf_show_balances";
-const showBalances = ref(localStorage.getItem(SHOW_KEY) !== "0");
-function toggleShowBalances() {
-    showBalances.value = !showBalances.value;
-    localStorage.setItem(SHOW_KEY, showBalances.value ? "1" : "0");
-}
 
 async function doLogout() {
     await clearSession();
@@ -144,6 +141,34 @@ async function doLogout() {
 
                     <RouterLink v-if="loaded && !accounts.length" class="text-sm underline text-gray-700"
                         :to="{ name: 'accounts' }">Criar conta</RouterLink>
+                </div>
+                <!-- User dropdown -->
+                <div class="relative" ref="menuRef">
+                    <button type="button"
+                        class="grid place-items-center w-9 h-9 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                        @click.stop="toggleUserMenu" aria-haspopup="menu" :aria-expanded="userMenuOpen"
+                        title="Abrir menu do utilizador">
+                        {{ initial }}
+                    </button>
+
+                    <!-- Dropdown panel -->
+                    <transition name="fade">
+                        <div v-if="userMenuOpen"
+                            class="absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
+                            role="menu">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <div class="mt-2 text-sm text-gray-600">Olá, <span class="font-medium">{{ firstName
+                                        }}</span></div>
+                            </div>
+
+                            <div class="py-1">
+                                <RouterLink :to="{ name: 'profile' }" class="block px-4 py-2 text-sm hover:bg-gray-50"
+                                    role="menuitem" @click.native="closeUserMenu">
+                                    Perfil
+                                </RouterLink>
+                            </div>
+                        </div>
+                    </transition>
                 </div>
             </header>
 

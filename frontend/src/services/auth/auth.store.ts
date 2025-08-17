@@ -2,20 +2,27 @@
 import { ref, computed } from "vue";
 import { getMe, logout } from "./auth.service";
 import type { UserDto } from "@/types/auth";
+import client from "../api/client";
 
 const userRef = ref<UserDto | null>(null);
 const authedRef = computed(() => !!userRef.value);
-let bootstrapOnce: Promise<void> | null = null;
 
 export function useAuth() {
     function setSession(u: UserDto) { userRef.value = u; }
 
     async function bootstrapAuth() {
-        if (bootstrapOnce) return bootstrapOnce;
-        bootstrapOnce = (async () => {
-            try { userRef.value = await getMe(); } catch { userRef.value = null; }
-        })();
-        return bootstrapOnce;
+        try {
+            const { data } = await client.get("/auth/me");
+            setSession(data.user);
+        } catch {
+            try {
+                await client.post("/auth/refresh", {});
+                const { data } = await client.get("/auth/me");
+                setSession(data.user);
+            } catch {
+                clearSession();
+            }
+        }
     }
 
     async function clearSession(opts: { remote?: boolean } = {}) {
