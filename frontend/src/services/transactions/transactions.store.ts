@@ -36,6 +36,30 @@ export function useTransactions() {
         items.value = [t, ...(items.value || [])];
     }
 
+    async function bulkAdd(drafts: TxCreateDto[], onProgress?: (done: number, total: number) => void) {
+        const totalN = drafts.length;
+        let done = 0;
+        const concurrency = Math.min(4, totalN); // be gentle with the API
+        const queue = drafts.slice();
+
+        async function worker() {
+            while (queue.length) {
+                const d = queue.shift()!;
+                try {
+                    const t = await TransactionService.create(d);
+                    items.value = [t, ...items.value]; // prepend
+                } catch (e) {
+                    // optional: collect/report errors
+                    console.error("bulkAdd error:", e);
+                } finally {
+                    done++; onProgress?.(done, totalN);
+                }
+            }
+        }
+        await Promise.all(Array.from({ length: concurrency }, worker));
+    }
+
+
     async function edit(id: string, patch: TxUpdateDto) {
         const t = await TransactionService.update(id, patch);
         const idx = (items.value || []).findIndex(x => x.id === id);
@@ -55,5 +79,5 @@ export function useTransactions() {
     }
 
 
-    return { items, total, page, pageSize, loading, error, load, add, edit, remove, setCategory };
+    return { items, total, page, pageSize, loading, error, load, add, bulkAdd, edit, remove, setCategory };
 }

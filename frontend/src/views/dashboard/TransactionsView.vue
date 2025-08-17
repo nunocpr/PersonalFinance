@@ -7,6 +7,8 @@ import TransactionModal from "@/components/transactions/TransactionModal.vue";
 import CategoryPickerModal from "@/components/transactions/CategoryPickerModal.vue";
 import { getDefaultForAccount, setDefaultForAccount } from "@/services/transactions/categoryDefaults.service";
 import { useCategories } from "@/services/categories/categories.store";
+import CsvImportPanel from "@/components/transactions/CsvImportPanel.vue";
+import TransactionsImport from "@/components/transactions/TransactionsImport.vue";
 
 
 const tx = useTransactions();
@@ -193,6 +195,8 @@ const childColorById = computed(() => {
         <div v-if="!hasAccounts" class="text-amber-700">
             Crie e selecione uma conta antes de adicionar transações.
         </div>
+
+        <TransactionsImport class="mb-8" />
 
         <div v-if="loading" class="text-gray-600">A carregar…</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>
