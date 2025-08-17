@@ -43,34 +43,6 @@ async function createRoot() {
             <RouterLink class="underline" :to="{ name: 'dashboard' }">Voltar ao painel principal</RouterLink>
         </div>
 
-        <!-- create card (same card style used across the app) -->
-        <section class="bg-white rounded p-6 px-12 shadow-md border mt-12">
-            <form class="flex flex-wrap items-end gap-6" @submit.prevent="createRoot">
-                <div class="min-w-[220px]">
-                    <label for="category-name" class="block text-sm text-gray-600 mb-1">Nome</label>
-                    <input id="category-name" name="category-name" v-model="name"
-                        class="w-full border rounded px-3 py-2 text-sm" placeholder="Ex.: Alimentação" />
-                </div>
-
-                <div>
-                    <label for="category-type" class="block text-sm text-gray-600 mb-1">Tipo</label>
-                    <select id="category-type" name="category-type" v-model="type"
-                        class="border rounded px-3 py-2 text-sm">
-                        <option v-for="k in kinds" :key="k" :value="k">{{ typeLabelsPt[k] }}</option>
-                    </select>
-                </div>
-
-                <button class="cursor-pointer px-4 py-2 text-sm rounded bg-black text-white"
-                    :disabled="saving || !type">
-                    {{ saving ? "A criar…" : "Adicionar" }}
-                </button>
-
-                <!-- inline messages -->
-                <p v-if="msg" class="text-green-600 text-sm">{{ msg }}</p>
-                <p v-if="err" class="text-red-600 text-sm">{{ err }}</p>
-            </form>
-        </section>
-
         <!-- states & tree (kept consistent with Accounts view spacing) -->
         <div v-if="loading" class="text-gray-600">A carregar categorias…</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>

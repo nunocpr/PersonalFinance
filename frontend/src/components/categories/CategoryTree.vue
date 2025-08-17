@@ -2,134 +2,126 @@
 import { ref } from "vue";
 import Draggable from "vuedraggable";
 import { useCategories } from "@/services/categories/categories.store";
+import CategoryModal from "./CategoryModal.vue";
 import type { Category } from "@/types/categories";
 
-const props = defineProps<{
-    nodes: Category[];
-}>();
+const props = defineProps<{ nodes: Category[] }>();
 
-const {
-    reorder, addChild, remove, edit, typeLabelsPt, getTypeLabelPt
-} = useCategories();
+const { reorder, addChild, remove, edit, addRoot, getTypeLabelPt } = useCategories();
 
-/** Estado de edição inline por ID */
-type Draft = { name: string; type: string; };
-const editing = ref<Record<number, Draft>>({});
+/* ---------- Modal state ---------- */
+const showModal = ref(false);
+const modalMode = ref<"create" | "edit">("create");
+const modalParent = ref<Category | null>(null); // parent for child context
+const modalValue = ref<Category | null>(null); // category being edited
 
-/** Entrar/Cancelar/Guardar edição */
-function startEdit(cat: Category) {
-    editing.value[cat.id] = {
-        name: cat.name ?? "",
-        type: (cat as any).type ?? "other",
-    };
+function openCreateRoot() {
+    modalMode.value = "create";
+    modalParent.value = null;
+    modalValue.value = null;
+    showModal.value = true;
 }
-function cancelEdit(id: number) {
-    delete editing.value[id];
+function openCreateChild(parent: Category) {
+    modalMode.value = "create";
+    modalParent.value = parent;
+    modalValue.value = null;
+    showModal.value = true;
 }
-async function saveEdit(id: number) {
-    const draft = editing.value[id];
-    if (!draft) return;
-    await edit(id, { name: draft.name, type: draft.type } as any);
-    delete editing.value[id];
+function openEditRoot(root: Category) {
+    modalMode.value = "edit";
+    modalParent.value = null;
+    modalValue.value = root;
+    showModal.value = true;
 }
-
-/** Adicionar subcategoria */
-const creatingChildFor = ref<number | null>(null);
-const childDraftName = ref("");
-const childDraftType = ref<string>(Object.keys(typeLabelsPt)[0] ?? "other");
-
-async function createChild(parent: Category) {
-    if (!childDraftName.value.trim()) return;
-    await addChild(parent.id, { name: childDraftName.value.trim(), type: childDraftType.value } as any);
-    childDraftName.value = "";
-    creatingChildFor.value = null;
+function openEditChild(child: Category, parent: Category) {
+    modalMode.value = "edit";
+    modalParent.value = parent;
+    modalValue.value = child;
+    showModal.value = true;
 }
 
-/** Reorder raiz e filhos (apenas entre irmãos) */
+async function onSave(payload: { name: string; description: string | null; color?: string | null; type?: any }) {
+    if (modalMode.value === "create") {
+        if (modalParent.value) {
+            // creating subcategory: inherit parent's type
+            await addChild(modalParent.value.id, {
+                name: payload.name,
+                description: payload.description ?? undefined,
+                type: (modalParent.value as any).type,
+            } as any);
+        } else {
+            // creating root: use provided type/color
+            await addRoot({
+                name: payload.name,
+                description: payload.description ?? undefined,
+                type: payload.type,
+                color: payload.color ?? undefined,
+            } as any);
+        }
+    } else if (modalMode.value === "edit" && modalValue.value) {
+        // patch differs for root vs child
+        const patch: any = { name: payload.name, description: payload.description };
+        if (!modalParent.value) {
+            // editing root: allow type/color changes
+            patch.type = payload.type;
+            patch.color = payload.color ?? null;
+        }
+        await edit(modalValue.value.id, patch);
+    }
+}
+async function onDelete(cat: Category) {
+    if (confirm(`Eliminar "${cat.name}"?`)) await remove(cat.id);
+}
+
+/* ---------- Reorder handlers ---------- */
 async function onRootsEnd() {
-    const orderedIds = props.nodes.map((n) => n.id);
+    const orderedIds = props.nodes.map(n => n.id);
     await reorder(null, orderedIds);
 }
 async function onChildrenEnd(parent: Category) {
-    const orderedIds = (parent.children ?? []).map((c) => c.id);
+    const orderedIds = (parent.children ?? []).map(c => c.id);
     await reorder(parent.id, orderedIds);
 }
 </script>
 
 <template>
-    <div class="space-y-4">
+    <div class="space-y-4 mt-12">
+        <!-- Top bar action -->
+        <div class="flex justify-start">
+            <button class="cursor-pointer px-3 py-1.5 rounded bg-black text-white" @click="openCreateRoot">
+                Adicionar categoria
+            </button>
+        </div>
+
+        <!-- ROOTS -->
         <Draggable :list="props.nodes" item-key="id" handle=".grab" @end="onRootsEnd">
             <template #item="{ element: root }">
-                <section class="border rounded-md bg-white p-4">
+                <section class="border rounded-md bg-white p-4 shadow-md">
+                    <!-- Root header -->
                     <div class="flex items-center gap-3">
                         <span class="grab cursor-grab select-none" title="Arrastar para ordenar">⋮⋮</span>
 
                         <div class="flex-1 min-w-0">
-                            <template v-if="editing[root.id]">
-                                <div class="flex flex-wrap items-end gap-3">
-                                    <div>
-                                        <label for="category-name" class="block text-xs text-gray-600 mb-1">Nome</label>
-                                        <input name="category-name" v-model="editing[root.id].name"
-                                            class="border rounded px-2 py-1" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-gray-600 mb-1">Tipo</label>
-                                        <select v-model="editing[root.id].type" class="border rounded px-2 py-1">
-                                            <option v-for="(label, key) in typeLabelsPt" :key="key" :value="key">{{
-                                                label }}</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </template>
-                            <template v-else>
-                                <h3 class="font-medium truncate">
-                                    {{ root.name }}
-                                    <span class="ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((root as any).type)
-                                        }}</span>
-                                </h3>
-                            </template>
+                            <h3 class="font-medium truncate">
+                                {{ root.name }}
+                                <span class="ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((root as any).type)
+                                    }}</span>
+                            </h3>
+                            <p v-if="root.description" class="text-xs text-gray-500 mt-1 truncate">{{ root.description
+                                }}</p>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <template v-if="editing[root.id]">
-                                <button class="cursor-pointer px-2 py-1 rounded bg-black text-white"
-                                    @click="saveEdit(root.id)">Guardar</button>
-                                <button class="cursor-pointer px-2 py-1 rounded border"
-                                    @click="cancelEdit(root.id)">Cancelar</button>
-                            </template>
-                            <template v-else>
-                                <button class="cursor-pointer px-2 py-1 rounded border"
-                                    @click="startEdit(root)">Editar</button>
-                                <button class="cursor-pointer px-2 py-1 rounded border"
-                                    @click="creatingChildFor = root.id">Adicionar subcategoria</button>
-                                <button class="cursor-pointer px-2 py-1 rounded border border-red-300 text-red-600"
-                                    @click="remove(root.id)">Eliminar</button>
-                            </template>
+                            <button class="cursor-pointer px-2 py-1 rounded border"
+                                @click="openEditRoot(root)">Editar</button>
+                            <button class="cursor-pointer px-2 py-1 rounded border"
+                                @click="openCreateChild(root)">Adicionar subcategoria</button>
+                            <button class="cursor-pointer px-2 py-1 rounded border border-red-300 text-red-600"
+                                @click="onDelete(root)">Eliminar</button>
                         </div>
                     </div>
 
-                    <div v-if="creatingChildFor === root.id" class="mt-3 pl-7">
-                        <div class="flex flex-wrap items-end gap-3">
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">Nome</label>
-                                <input v-model="childDraftName" class="border rounded px-2 py-1" />
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">Tipo</label>
-                                <select v-model="childDraftType" class="border rounded px-2 py-1">
-                                    <option v-for="(label, key) in typeLabelsPt" :key="key" :value="key">{{ label }}
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button class="cursor-pointer px-2 py-1 rounded bg-black text-white"
-                                    @click="createChild(root)">Adicionar</button>
-                                <button class="cursor-pointer px-2 py-1 rounded border"
-                                    @click="creatingChildFor = null">Cancelar</button>
-                            </div>
-                        </div>
-                    </div>
-
+                    <!-- CHILDREN -->
                     <div class="mt-3 pl-7">
                         <Draggable :list="root.children" item-key="id" handle=".grab"
                             :group="{ name: 'children-' + root.id, pull: false, put: false }"
@@ -139,47 +131,22 @@ async function onChildrenEnd(parent: Category) {
                                     <span class="grab cursor-grab select-none" title="Arrastar para ordenar">⋮⋮</span>
 
                                     <div class="flex-1 min-w-0">
-                                        <template v-if="editing[child.id]">
-                                            <div class="flex flex-wrap items-end gap-3">
-                                                <div>
-                                                    <label for="category-name"
-                                                        class="block text-xs text-gray-600 mb-1">Nome</label>
-                                                    <input v-model="editing[child.id].name"
-                                                        class="border rounded px-2 py-1" />
-                                                </div>
-                                                <div>
-                                                    <label class="block text-xs text-gray-600 mb-1">Tipo</label>
-                                                    <select v-model="editing[child.id].type"
-                                                        class="border rounded px-2 py-1">
-                                                        <option v-for="(label, key) in typeLabelsPt" :key="key"
-                                                            :value="key">{{ label }}</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </template>
-                                        <template v-else>
-                                            <div class="truncate">
-                                                {{ child.name }}
-                                                <span class="ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((child as
-                                                    any).type) }}</span>
-                                            </div>
-                                        </template>
+                                        <div class="truncate">
+                                            {{ child.name }}
+                                            <span class="ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((child as
+                                                any).type)
+                                            }}</span>
+                                        </div>
+                                        <p v-if="child.description" class="text-xs text-gray-500 truncate">{{
+                                            child.description }}</p>
                                     </div>
 
                                     <div class="flex items-center gap-2">
-                                        <template v-if="editing[child.id]">
-                                            <button class="cursor-pointer px-2 py-1 rounded bg-black text-white"
-                                                @click="saveEdit(child.id)">Guardar</button>
-                                            <button class="cursor-pointer px-2 py-1 rounded border"
-                                                @click="cancelEdit(child.id)">Cancelar</button>
-                                        </template>
-                                        <template v-else>
-                                            <button class="cursor-pointer px-2 py-1 rounded border"
-                                                @click="startEdit(child)">Editar</button>
-                                            <button
-                                                class="cursor-pointer px-2 py-1 rounded border border-red-300 text-red-600"
-                                                @click="remove(child.id)">Eliminar</button>
-                                        </template>
+                                        <button class="cursor-pointer px-2 py-1 rounded border"
+                                            @click="openEditChild(child, root)">Editar</button>
+                                        <button
+                                            class="cursor-pointer px-2 py-1 rounded border border-red-300 text-red-600"
+                                            @click="onDelete(child)">Eliminar</button>
                                     </div>
                                 </div>
                             </template>
@@ -188,12 +155,17 @@ async function onChildrenEnd(parent: Category) {
                 </section>
             </template>
         </Draggable>
+
+        <!-- Modal -->
+        <CategoryModal v-model:open="showModal" :mode="modalMode" :parent="modalParent" :value="modalValue"
+            @save="onSave" />
     </div>
 </template>
 
 <style scoped>
-/* melhora a área de arrasto em dispositivos apontadores */
 .grab {
     padding: 0 4px;
 }
+
+/* bigger drag handle */
 </style>
