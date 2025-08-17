@@ -3,6 +3,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import "./style.css";
+import "echarts";
 
 import { setupInterceptors } from "@/services/api/interceptors";
 import { useAuth } from "@/services/auth/auth.store";

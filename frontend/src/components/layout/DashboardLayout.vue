@@ -111,13 +111,6 @@ async function doLogout() {
 
             <div
                 :class="['border-t border-gray-200 p-3 text-sm text-gray-700', collapsed ? 'flex flex-col items-center' : '']">
-                <div class="flex items-center">
-                    <div class="grid place-items-center rounded-full bg-gray-200 text-gray-700 w-8 h-8">
-                        {{ initial }}
-                    </div>
-                    <div v-if="!collapsed" class="truncate ml-3">Olá, {{ displayName }}</div>
-                </div>
-
                 <button
                     class="mt-3 rounded bg-black text-white py-1.5 text-center w-full cursor-pointer hover:bg-red-700"
                     :class="collapsed ? 'w-10 h-8 grid place-items-center p-0' : ''" @click="doLogout"
@@ -158,7 +151,7 @@ async function doLogout() {
                             role="menu">
                             <div class="px-4 py-3 border-b border-gray-100">
                                 <div class="mt-2 text-sm text-gray-600">Olá, <span class="font-medium">{{ firstName
-                                        }}</span></div>
+                                }}</span></div>
                             </div>
 
                             <div class="py-1">
