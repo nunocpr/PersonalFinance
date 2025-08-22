@@ -16,6 +16,7 @@ const nav = [
     { name: "Contas", to: { name: "accounts" }, icon: "🏦" },
     { name: "Categorias", to: { name: "categories" }, icon: "🗂️" },
     { name: "Transacções", to: { name: "transactions" }, icon: "💳" },
+    { name: "Regras", to: { name: "rules" }, icon: "⚙️" }
 ];
 
 const TITLE_MAP = new Map<string, string>(nav.map(i => [String(i.to.name), i.name]));
@@ -151,7 +152,7 @@ async function doLogout() {
                             role="menu">
                             <div class="px-4 py-3 border-b border-gray-100">
                                 <div class="mt-2 text-sm text-gray-600">Olá, <span class="font-medium">{{ firstName
-                                }}</span></div>
+                                        }}</span></div>
                             </div>
 
                             <div class="py-1">

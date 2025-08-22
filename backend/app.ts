@@ -11,6 +11,7 @@ import categoryRoutes from "./routes/category.routes";
 import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import accountRoutes from "./routes/accounts.routes";
+import rulesRoutes from "./routes/transactionRules.routes";
 import transactionsRouter from "./routes/transactions.routes";
 import errorHandler from "./middlewares/errorHandler";
 
@@ -51,6 +52,7 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/transaction-rules", rulesRoutes);
 
 // Error handling last
 app.use(errorHandler);

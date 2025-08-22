@@ -2,114 +2,108 @@ import Papa from "papaparse";
 
 export type RawCsvRow = { date: string; description: string; cents: number };
 
-// --- helpers ---
-const norm = (s: string) =>
-    String(s || "")
-        .replace(/^\uFEFF/, "")        // BOM
-        .replace(/\u00A0/g, " ")       // NBSP -> space
-        .replace(/\uFFFD/g, "")        // replacement chars (bad decode)
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, ""); // strip diacritics
+function sanitize(s: string) {
+    return String(s ?? "")
+        .replace(/^\uFEFF/, "")
+        .replace(/[\u200E\u200F]/g, "")   // LRM/RLM
+        .replace(/\u00A0/g, " ")          // NBSP -> space
+        .trim();
+}
 
-const ddmmyyyyToIso = (s: string) => {
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s).trim());
-    return m ? `${m[3]}-${m[2]}-${m[1]}` : new Date().toISOString().slice(0, 10);
-};
+function toIsoDatePT(s: string): string | null {
+    const t = sanitize(s);
+    // Accept 1–2 digit day/month, separators / - .
+    const m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/.exec(t);
+    if (!m) return null;
+    const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3]);
+    if (!(d >= 1 && d <= 31 && mo >= 1 && mo <= 12 && y >= 1900)) return null;
+    const dd = String(d).padStart(2, "0");
+    const mm = String(mo).padStart(2, "0");
+    return `${y}-${mm}-${dd}`;
+}
 
-function toCents(str: string): number {
-    let s = String(str || "").trim();
+function toCents(raw: string): number {
+    let s = sanitize(raw).replace(/\u2212/g, "-"); // Unicode minus -> ASCII
     if (!s) return 0;
-
-    // Remove currency/whitespace except digits, separators and minus
-    s = s.replace(/[^\d,.\-]/g, "");
-
-    let neg = false;
-    if (s.endsWith("-")) { neg = true; s = s.slice(0, -1); }
-
-    // 1.234,56  →  1234.56
+    // "1.234,56" -> "1234.56"
     if (s.includes(",") && s.includes(".")) s = s.replace(/\./g, "").replace(",", ".");
     else if (s.includes(",")) s = s.replace(",", ".");
-
-    let n = Number(s);
-    if (!Number.isFinite(n)) n = 0;
-    if (neg) n = -Math.abs(n);
-    return Math.round(n * 100);
+    const n = Number(s);
+    return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
-function looksLikeHeader(cells: string[]) {
-    if (cells.length < 4) return false;
-    const t = cells.map(norm);
-    const hasL = t.some(x => x.startsWith("data lanc"));   // data lançamento
-    const hasV = t.some(x => x.startsWith("data valor"));
-    const hasD = t.some(x => x.startsWith("descricao"));
-    const hasM = t.some(x => x.startsWith("montante") || x === "valor");
-    return hasL && hasV && hasD && hasM;
+function parseWithEncoding(file: File, encoding: string): Promise<string[][]> {
+    return new Promise((resolve, reject) => {
+        Papa.parse<string[]>(file, {
+            encoding,
+            delimiter: ";",
+            skipEmptyLines: "greedy",
+            complete: (res) => resolve(res.data || []),
+            error: (err) => reject(err),
+        });
+    });
 }
 
-function sliceToHeader(chunk: string, delimiter = ";") {
-    const lines = chunk.replace(/\r\n?/g, "\n").split("\n");
-    for (let i = 0; i < Math.min(lines.length, 200); i++) {
-        const line = lines[i];
-        if (!line.trim()) continue;
-        const cells = line.split(delimiter).map(s => s.trim());
-        if (looksLikeHeader(cells)) {
-            return lines.slice(i).join("\n");
+function norm(s: string) {
+    return sanitize(s)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
+
+function findHeaderIndex(rows: string[][]): number {
+    return rows.findIndex((r) => {
+        const a = norm(r[0] || "");
+        const b = norm(r[1] || "");
+        return a.startsWith("data lancamento") && b.startsWith("data valor");
+    });
+}
+
+/** Robust Millennium CSV parser (reads File directly, handles encodings). */
+export async function parseMillenniumCsvFromFile(file: File): Promise<RawCsvRow[]> {
+    const encodings = ["utf-8", "windows-1252", "iso-8859-1", "utf-16le"];
+
+    for (const enc of encodings) {
+        try {
+            const rows = await parseWithEncoding(file, enc);
+            const header = findHeaderIndex(rows);
+            if (header === -1) continue;
+
+            const out: RawCsvRow[] = [];
+
+            for (let i = header + 1; i < rows.length; i++) {
+                const r = rows[i] || [];
+                if (r.length < 5) continue;
+
+                const dataLanc = r[0] || "";
+                const dataValor = r[1] || "";
+                const descricao = r[2] || "";
+                const montante = r[3] || "";
+                const tipo = norm(r[4] || "");
+
+                // Try both date columns; accept if either parses.
+                const isoValor = toIsoDatePT(dataValor);
+                const isoLanc = toIsoDatePT(dataLanc);
+                const iso = isoValor ?? isoLanc;
+                if (!iso) continue; // both cells failed -> likely footer/blank
+
+                let cents = toCents(montante);
+                // Ensure sign from Tipo
+                if (/debito|deb/i.test(tipo)) cents = -Math.abs(cents);
+                else if (/credito|cred/i.test(tipo)) cents = Math.abs(cents);
+
+                // Ignore rows with no description AND zero amount
+                if (!descricao.trim() && cents === 0) continue;
+
+                out.push({ date: iso, description: sanitize(descricao), cents });
+            }
+
+            if (out.length) return out;
+            // else try next encoding
+        } catch {
+            // try next encoding
         }
     }
-    return chunk;
-}
 
-// --- main: parse with Papa ---
-export function parseMillenniumCsvWithPapa(csvText: string): RawCsvRow[] {
-    // Bank files use ';' and we want empty-line pruning.
-    const sliced = sliceToHeader(csvText, ";");
-
-    const res = Papa.parse<string[]>(sliced, {
-        delimiter: ";",
-        header: false,
-        skipEmptyLines: "greedy",
-        dynamicTyping: false,
-    });
-
-    if (res.errors?.length) {
-        // Non-fatal; you can log res.errors if you want
-    }
-
-    const rows: RawCsvRow[] = [];
-    const data = res.data;
-
-    // Expect columns:
-    // [0] Data lançamento | [1] Data valor | [2] Descrição | [3] Montante | [4] Tipo | [5] Saldo
-    for (let i = 1; i < data.length; i++) { // start after header row
-        const r = data[i] || [];
-        if (r.length < 5) continue;
-
-        const dataValor = r[1]?.toString().trim() || "";
-        // Extra guard: skip summary/footer lines
-        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dataValor)) continue;
-
-        const descricao = r[2]?.toString() ?? "";
-        const montante = r[3]?.toString() ?? "0";
-        const tipo = norm(r[4]?.toString() ?? "");
-
-        let cents = toCents(montante);
-
-        // If sign not obvious, infer from type
-        const isDebit = /(debito|deb)/.test(tipo);
-        const isCredit = /(credito|cred)/.test(tipo);
-        if (isDebit) cents = -Math.abs(cents);
-        if (isCredit) cents = Math.abs(cents);
-
-        if (!descricao && cents === 0) continue;
-
-        rows.push({
-            date: ddmmyyyyToIso(dataValor),
-            description: descricao,
-            cents,
-        });
-    }
-
-    return rows;
+    return [];
 }

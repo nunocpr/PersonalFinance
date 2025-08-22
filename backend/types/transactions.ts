@@ -1,3 +1,5 @@
+import { TransactionKind } from "../generated/prisma";
+
 // types/transactions.ts
 export type SortDir = "asc" | "desc";
 
@@ -22,6 +24,7 @@ export type CreateInput = {
     incomeSourceId?: number | null;
     isSaving?: boolean;
     notes?: string | null;
+    kind?: TransactionKind | null;
 };
 
 export type UpdateInput = Partial<CreateInput>;

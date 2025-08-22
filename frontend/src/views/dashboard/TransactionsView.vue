@@ -7,7 +7,6 @@ import TransactionModal from "@/components/transactions/TransactionModal.vue";
 import CategoryPickerModal from "@/components/transactions/CategoryPickerModal.vue";
 import { getDefaultForAccount, setDefaultForAccount } from "@/services/transactions/categoryDefaults.service";
 import { useCategories } from "@/services/categories/categories.store";
-import CsvImportPanel from "@/components/transactions/CsvImportPanel.vue";
 import TransactionsImport from "@/components/transactions/TransactionsImport.vue";
 
 
@@ -95,7 +94,7 @@ async function onSave(payload: {
 }
 
 const W_KEY = "pf_tx_col_widths_v1";
-const MIN = [96, 120, 90, 80] as const;        // px minimums for [0]=date,[1]=cat,[2]=amount,[3]=actions
+const MIN = [96, 120, 90, 80] as const;
 const widths = ref<number[]>(
     (() => {
         try {
@@ -104,11 +103,11 @@ const widths = ref<number[]>(
                 return saved;
             }
         } catch { }
-        return [160, 180, 120, 80]; // sensible defaults
+        return [160, 180, 120, 80];
     })()
 );
 
-// template: fixed px, flexible "1fr" for description
+
 const templateColumns = computed(
     () => `${widths.value[0]}px ${widths.value[1]}px ${widths.value[2]}px 1fr ${widths.value[3]}px`
 );
@@ -122,7 +121,7 @@ const drag = ref<DragState | null>(null);
 const dragging = computed(() => !!drag.value);
 
 function startResize(idx: 0 | 1 | 2 | 3, e: PointerEvent) {
-    // idx corresponds to the *fixed* columns (date,category,amount,actions).
+
     (e.target as Element).setPointerCapture?.(e.pointerId);
     drag.value = { idx, startX: e.clientX, startW: widths.value[idx] };
     window.addEventListener("pointermove", onMove, { passive: true });
