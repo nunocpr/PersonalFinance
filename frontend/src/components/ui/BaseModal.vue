@@ -6,7 +6,7 @@ const props = withDefaults(defineProps<{
     open: boolean
     closeOnEsc?: boolean
     closeOnBackdrop?: boolean
-    maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl"
+    maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl"
     /** aria-labelledby target id (optional) */
     labelledby?: string
 }>(), {
@@ -45,14 +45,33 @@ async function focusFirst() {
     (focusables[0] ?? root).focus();
 }
 
+let locks = 0;
+let prevOverflow = "";
+let prevPaddingRight = "";
+
+function getScrollbarWidth() {
+    // difference between layout viewport and visual viewport width
+    return window.innerWidth - document.documentElement.clientWidth;
+}
+
 function lockBodyScroll(on: boolean) {
-    const el = document.documentElement; // avoid layout shifts vs body
+    const body = document.body;
+
     if (on) {
-        el.style.scrollbarGutter = "stable"; // nicer on supported browsers
-        el.classList.add("overflow-y-hidden");
+        if (++locks > 1) return; // support nested modals
+        prevOverflow = body.style.overflow;
+        prevPaddingRight = body.style.paddingRight;
+
+        const sbw = getScrollbarWidth();
+        if (sbw > 0) {
+            const current = parseFloat(getComputedStyle(body).paddingRight) || 0;
+            body.style.paddingRight = `${current + sbw}px`;
+        }
+        body.style.overflow = "hidden";
     } else {
-        el.classList.remove("overflow-y-hidden");
-        el.style.scrollbarGutter = "";
+        if (--locks > 0) return;
+        body.style.overflow = prevOverflow;
+        body.style.paddingRight = prevPaddingRight;
     }
 }
 
@@ -90,6 +109,10 @@ const maxW = {
     lg: "max-w-lg",
     xl: "max-w-xl",
     "2xl": "max-w-2xl",
+    "3xl": "max-w-3xl",
+    "4xl": "max-w-4xl",
+    "5xl": "max-w-5xl",
+    "6xl": "max-w-6xl",
 }[props.maxWidth];
 </script>
 
@@ -98,9 +121,9 @@ const maxW = {
         <transition name="fade">
             <div v-if="open" class="fixed inset-0 z-[9999] grid place-items-center bg-black/40" role="dialog"
                 aria-modal="true" :aria-labelledby="labelledby" @click.self="closeOnBackdrop ? close() : undefined">
-                <div ref="panelRef" class="bg-white rounded-xl w-full p-5 space-y-4 shadow-xl outline-none"
-                    :class="maxW" tabindex="-1">
-                    <!-- Optional named slots to structure content -->
+                <div ref="panelRef"
+                    :class="['bg-white rounded-xl w-full p-5 space-y-4 shadow-xl outline-none max-h-[90dvh] overflow-hidden', maxW]"
+                    tabindex="-1">
                     <header v-if="$slots.header" class="mb-1">
                         <slot name="header" />
                     </header>

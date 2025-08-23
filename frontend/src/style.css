@@ -3,8 +3,17 @@
 
 /* Define tokens that become utilities like `font-heading` and `font-body` */
 @theme {
+    /* Fonts */
     --font-heading: "Cuprum", sans-serif;
     --font-body: "Sarabun", sans-serif;
+
+    /* Colours */
+    --color-primary: #7DC7F9;
+    --color-secondary-light: #404856;
+    --color-secondary: #2D333D;
+    --color-alabaster: #F0F2FF;
+    --color-night: #171515;
+
 }
 
 /* your base overrides */

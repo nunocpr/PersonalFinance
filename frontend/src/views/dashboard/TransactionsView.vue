@@ -7,7 +7,7 @@ import TransactionModal from "@/components/transactions/TransactionModal.vue";
 import CategoryPickerModal from "@/components/transactions/CategoryPickerModal.vue";
 import { getDefaultForAccount, setDefaultForAccount } from "@/services/transactions/categoryDefaults.service";
 import { useCategories } from "@/services/categories/categories.store";
-import TransactionsImport from "@/components/transactions/TransactionsImport.vue";
+import TransactionsImportModal from "@/components/transactions/TransactionsImportModal.vue";
 import Button from "@/components/ui/Button.vue";
 
 
@@ -27,6 +27,7 @@ const to = ref("");
 
 // modal state
 const show = ref(false);
+const showImport = ref(false);
 
 const hasAccounts = computed(() => Array.isArray(accounts.value) && accounts.value.length > 0);
 
@@ -163,7 +164,6 @@ const childColorById = computed(() => {
     <!-- Page Header-->
     <header class="flex items-center justify-between">
         <h1 class="text-xl font-heading">Gerir transacções</h1>
-        <RouterLink class="underline" :to="{ name: 'dashboard' }">Voltar ao painel principal</RouterLink>
     </header>
     <div class="space-y-12 gap-3 mt-12">
 
@@ -185,16 +185,18 @@ const childColorById = computed(() => {
                 </div>
                 <Button variant="primary" size="md" title="Filtrar" @click="search">Filtrar</Button>
             </div>
+            <div class="flex gap-2">
+                <Button variant="primary" size="md" :disabled="!hasAccounts" title="Importar CSV"
+                    @click="showImport = true">Importar</Button>
 
-            <Button variant="primary" size="md" :disabled="!hasAccounts" title="Adicionar Transacção"
-                @click="show = true">Adicionar</Button>
+                <Button variant="primary" size="md" :disabled="!hasAccounts" title="Adicionar Transacção"
+                    @click="show = true">Adicionar</Button>
+            </div>
         </div>
 
         <div v-if="!hasAccounts" class="text-amber-700">
             Crie e selecione uma conta antes de adicionar transações.
         </div>
-
-        <TransactionsImport class="mb-8" />
 
         <div v-if="loading" class="text-gray-600">A carregar…</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>
@@ -273,7 +275,8 @@ const childColorById = computed(() => {
             </ul>
         </div>
 
-        <!-- Picker modal + Tx modal (unchanged) -->
+        <TransactionsImportModal v-model:open="showImport" />
+
         <CategoryPickerModal v-model:open="showCatPicker" :account-id="activeId || null"
             :current-category-id="(items.find(t => t.id === pickingTxId) || {}).categoryId ?? null"
             :default-category-id="defaultSubForActive" @pick="onPick" @set-default="onSetDefault" />

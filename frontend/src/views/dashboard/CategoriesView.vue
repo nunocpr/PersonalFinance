@@ -39,7 +39,6 @@ async function createRoot() {
     <div class="space-y-6">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-heading">Gerir categorias</h1>
-            <RouterLink class="underline" :to="{ name: 'dashboard' }">Voltar ao painel principal</RouterLink>
         </div>
 
         <div v-if="loading" class="text-gray-600">A carregar categorias…</div>

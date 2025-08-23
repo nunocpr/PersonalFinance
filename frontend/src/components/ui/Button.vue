@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg";
+type Size = "xs" | "sm" | "md" | "lg" | "icon";
 
 const props = withDefaults(defineProps<{
     variant?: Variant;
@@ -35,9 +35,11 @@ const base =
     "inline-flex items-center justify-center gap-2 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition duration-200 cursor-pointer";
 
 const sizes: Record<Size, string> = {
+    xs: "h-7 px-3 text-sm",
     sm: "h-9 px-3 text-sm",
     md: "h-10 px-4",
     lg: "h-11 px-5 text-base",
+    icon: "h-8 w-8 p-0 justify-center"
 };
 
 const roundedMap = {
@@ -49,10 +51,10 @@ const roundedMap = {
 };
 
 const variants: Record<Variant, string> = {
-    primary: "bg-black text-white hover:bg-black/80 focus-visible:ring-black",
-    secondary: "bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring-gray-900",
-    ghost: "bg-transparent border-1 border-black text-gray-900 hover:bg-gray-100 focus-visible:ring-gray-400",
-    danger: "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600",
+    primary: "border-1 border-black bg-black text-white hover:bg-black/80 focus-visible:ring-black",
+    secondary: "border-1 border-black bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring-gray-900",
+    ghost: "border-1 border-black bg-transparent border-black text-gray-900 hover:bg-gray-100 focus-visible:ring-gray-400",
+    danger: "border-1 border-black bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600",
 };
 
 const cls = computed(() => [

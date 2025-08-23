@@ -255,18 +255,6 @@ const donutOption = computed(() => {
 });
 
 // --------------- TABLE (YEAR) ---------------
-const hoveredCatId = ref<number | null>(null);
-
-function catRGBA(color: string | null, alpha = 0.15) {
-    // naive hex -> rgba fallback
-    if (!color || !/^#?[0-9a-f]{6}$/i.test(color)) return `rgba(148,163,184,${alpha})`; // slate-400
-    const hex = color.replace("#", "");
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function totalForSub(subId: number) {
     return totalsBySub.value[subId] || 0;
 }
@@ -286,33 +274,32 @@ function monthValueForSub(subId: number, key: string) {
         <section class="flex flex-wrap items-end gap-3">
             <label class="text-sm text-gray-700">
                 Vista:
-                <select v-model="mode" class="border rounded px-2 py-1 ml-1">
+                <select v-model="mode"
+                    class="ml-1 h-9 px-3 rounded border bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/40">
                     <option value="month">Mês</option>
                     <option value="year">Ano</option>
                 </select>
             </label>
 
-            <label v-if="mode === 'year'" class="text-sm text-gray-700">
+            <label class="text-sm text-gray-700">
                 Ano:
-                <input type="number" v-model.number="year" class="border rounded px-2 py-1 ml-1 w-24"
+                <input type="number" v-model.number="year"
+                    class="ml-1 h-9 w-24 px-3 rounded border bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/40"
                     @change="refresh" />
             </label>
 
-            <template v-else>
-                <label class="text-sm text-gray-700">
-                    Ano:
-                    <input type="number" v-model.number="year" class="border rounded px-2 py-1 ml-1 w-24"
-                        @change="refresh" />
-                </label>
+            <template v-if="mode !== 'year'">
                 <label class="text-sm text-gray-700">
                     Mês:
-                    <select v-model.number="month" class="border rounded px-2 py-1 ml-1" @change="refresh">
+                    <select v-model.number="month"
+                        class="ml-1 h-9 px-3 rounded border bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/40"
+                        @change="refresh">
                         <option v-for="(m, idx) in monthNames" :key="idx" :value="idx + 1">{{ m }}</option>
                     </select>
                 </label>
             </template>
-            <Button variant="primary" size="md" title="Atualizar" @click="refresh">Atualizar</Button>
 
+            <Button variant="primary" size="sm" title="Atualizar" @click="refresh">Atualizar</Button>
         </section>
 
         <!-- Loading / error -->
@@ -337,12 +324,10 @@ function monthValueForSub(subId: number, key: string) {
 
         <!-- Year table -->
         <section class="border rounded bg-white overflow-x-auto p-3">
-            <h3 class="font-medium mb-3">Tabela anual por categoria / subcategoria ({{ year }})</h3>
-
-            <div class="min-w-[960px]">
+            <div class="min-w-fit">
                 <!-- header -->
                 <div
-                    class="grid grid-cols-[16rem_16rem_repeat(12,6rem)_12rem] gap-2 px-2 py-2 bg-gray-50 text-sm font-medium">
+                    class="grid grid-cols-[8rem_8rem_repeat(12,3.2rem)_8rem] gap-2 px-2 py-2 bg-gray-50 text-sm font-medium">
                     <div>Categoria</div>
                     <div>Subcategoria</div>
                     <div v-for="m in monthsForYear" :key="m.key" class="text-right">{{ m.label }}</div>
@@ -352,8 +337,8 @@ function monthValueForSub(subId: number, key: string) {
                 <!-- rows -->
                 <div v-for="cat in tree" :key="cat.id" class="border-t first:border-t-0">
                     <!-- category row -->
-                    <div class="grid grid-cols-[16rem_16rem_repeat(12,6rem)_12rem] gap-2 px-2 py-1.5 bg-gray-50/50 text-sm"
-                        @mouseenter="hoveredCatId = cat.id" @mouseleave="hoveredCatId = null">
+                    <div
+                        class="grid grid-cols-[8rem_8rem_repeat(12,3.2rem)_8rem] gap-2 px-2 py-1.5 bg-gray-50/50 text-sm">
                         <div class="font-medium flex items-center gap-2">
                             <span v-if="cat.color" class="inline-block w-3 h-3 rounded-full"
                                 :style="{ background: cat.color! }"></span>
@@ -371,8 +356,9 @@ function monthValueForSub(subId: number, key: string) {
                     </div>
 
                     <!-- sub rows -->
-                    <div v-for="sub in cat.children" :key="sub.id"
-                        class="grid grid-cols-[16rem_16rem_repeat(12,6rem)_12rem] gap-2 px-2 py-1.5 text-sm">
+                    <div v-for="(sub, i) in cat.children" :key="sub.id"
+                        class="grid grid-cols-[8rem_8rem_repeat(12,3.2rem)_8rem] gap-2 px-2 py-1.5 text-sm"
+                        :class="i % 2 ? 'bg-primary/20' : ''">
                         <div></div>
                         <div class="truncate">{{ sub.name }}</div>
 
@@ -382,18 +368,8 @@ function monthValueForSub(subId: number, key: string) {
                             </div>
                         </template>
 
-                        <!-- total cell w/ hover highlight + % -->
-                        <div class="text-right"
-                            :style="hoveredCatId === cat.id ? { background: catRGBA(cat.color, .18), borderRadius: '6px', paddingRight: '6px' } : {}">
-                            <template v-if="hoveredCatId === cat.id">
-                                <span class="font-medium">{{ formatCentsEUR(totalForSub(sub.id))
-                                    }}</span>
-                                <span class="text-gray-500"> ({{ percentOf(sub.id).toFixed(1) }}%)</span>
-                            </template>
-                            <template v-else>
-                                {{ formatCentsEUR(totalForSub(sub.id)) }}
-                            </template>
-                        </div>
+                        <!-- (optional) total per subcat, if you add it later -->
+                        <!-- <div class="text-right font-medium">{{ formatCentsEUR(totalBySub[sub.id] || 0) }}</div> -->
                     </div>
                 </div>
             </div>
