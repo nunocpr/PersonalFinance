@@ -130,7 +130,6 @@ async function parseFile(file: File) {
     try {
         fileName.value = file.name;
 
-        // 👇 read *file* with Papa so we can choose encoding
         const rows: RawCsvRow[] = await parseMillenniumCsvFromFile(file);
 
         drafts.value = rows.map((r): Draft => {
@@ -233,7 +232,6 @@ async function importAll() {
             amount: d.cents,
             description: d.description,
             categoryId: d.categoryId ?? null,
-            // kind: d.kind, // optional – backend can infer from sign
         }));
         await tx.bulkAdd(payloads);
         reset();

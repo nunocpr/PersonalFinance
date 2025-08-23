@@ -4,6 +4,7 @@ import { useAccounts } from "@/services/accounts/accounts.store";
 import AccountModal from "./AccountModal.vue";
 import type { Account } from "@/types/accounts";
 import { formatCentsEUR } from "@/utils/money";
+import Button from "../ui/Button.vue";
 
 const { items, load, add, edit, remove, getAccountTypeLabelPt } = useAccounts();
 
@@ -50,7 +51,7 @@ async function onDelete(a: Account) {
                         <span class="mx-2">|</span>
                         <span class="text-gray-500 font-normal text-sm">{{
                             getAccountTypeLabelPt(a.type)
-                        }}
+                            }}
                             <span v-if="a.description">• {{ a.description }}</span>
                         </span>
                     </div>
@@ -59,19 +60,16 @@ async function onDelete(a: Account) {
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button type="button" class="cursor-pointer px-2 py-1 rounded border"
-                        @click="openEdit(a)">Editar</button>
-                    <button type="button" class="cursor-pointer px-2 py-1 rounded bg-red-600 text-white"
-                        @click="onDelete(a)">Apagar</button>
+                    <Button variant="ghost" size="sm" title="Editar Conta" @click="openEdit(a)">Editar</Button>
+                    <Button variant="danger" size="sm" title="Apagar Conta" @click="onDelete(a)">Apagar</Button>
                 </div>
             </div>
             <div class="flex flex-col items-center gap-y-6 mt-12">
                 <p v-if="!items.length" class="text-sm text-gray-600">Ainda não tens contas. Cria a tua primeira conta.
                 </p>
-                <button type="button" class="cursor-pointer px-3 py-1.5 rounded bg-black text-white"
-                    @click="openCreate">
-                    Adicionar nova conta
-                </button>
+                <Button variant="primary" size="md" title="Criar Conta" @click="openCreate">Adicionar nova
+                    conta</Button>
+
             </div>
         </div>
 

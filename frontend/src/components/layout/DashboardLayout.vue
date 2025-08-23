@@ -4,6 +4,7 @@ import { useAuth } from "@/services/auth/auth.store";
 import { useRoute, useRouter } from "vue-router";
 import { useAccounts } from "@/services/accounts/accounts.store";
 import AccountPicker from "@/components/accounts/AccountPicker.vue";
+import Button from "../ui/Button.vue";
 
 
 // ── Sidebar + title mapping ─────────────
@@ -112,13 +113,10 @@ async function doLogout() {
 
             <div
                 :class="['border-t border-gray-200 p-3 text-sm text-gray-700', collapsed ? 'flex flex-col items-center' : '']">
-                <button
-                    class="mt-3 rounded bg-black text-white py-1.5 text-center w-full cursor-pointer hover:bg-red-700"
-                    :class="collapsed ? 'w-10 h-8 grid place-items-center p-0' : ''" @click="doLogout"
-                    :title="collapsed ? 'Terminar sessão' : undefined">
-                    <span v-if="!collapsed">Terminar sessão</span>
-                    <span v-else>⏻</span>
-                </button>
+                <Button variant="primary" size="md" @click="doLogout"
+                    :class="['hover:bg-red-700 w-full', collapsed ? 'w-10 h-8 grid place-items-center p-0' : '']"
+                    :title="collapsed ? 'Terminar sessão' : undefined"> <span v-if="!collapsed">Terminar sessão</span>
+                    <span v-else>⏻</span></Button>
             </div>
         </aside>
 
@@ -152,7 +150,7 @@ async function doLogout() {
                             role="menu">
                             <div class="px-4 py-3 border-b border-gray-100">
                                 <div class="mt-2 text-sm text-gray-600">Olá, <span class="font-medium">{{ firstName
-                                        }}</span></div>
+                                }}</span></div>
                             </div>
 
                             <div class="py-1">
@@ -161,6 +159,9 @@ async function doLogout() {
                                     Perfil
                                 </RouterLink>
                             </div>
+                            <Button variant="primary" size="md" @click="doLogout" class="hover:bg-red-700 w-full"
+                                title="Terminar sessão">Terminar
+                                sessão</Button>
                         </div>
                     </transition>
                 </div>

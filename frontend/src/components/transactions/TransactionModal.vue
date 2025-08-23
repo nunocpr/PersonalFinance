@@ -5,6 +5,7 @@ import { useAccounts } from "@/services/accounts/accounts.store";
 import { useCategories } from "@/services/categories/categories.store";
 import type { Category } from "@/types/categories";
 import MoneyCentsInput from "../inputs/MoneyCentsInput.vue";
+import BaseModal from "../ui/BaseModal.vue";
 
 
 type Mode = "create" | "edit";
@@ -97,57 +98,56 @@ function save() {
 </script>
 
 <template>
-    <teleport to="body">
-        <transition name="fade">
-            <div v-if="open" class="fixed inset-0 z-[9999] grid place-items-center bg-black/40" @click.self="close">
-                <div class="bg-white rounded-xl w-full max-w-md p-5 space-y-4 shadow-xl">
-                    <h2 class="text-lg font-heading">{{ mode === "create" ? "Adicionar transação" : "Editar transação"
-                        }}</h2>
+    <BaseModal :open="open" @update:open="val => emit('update:open', val)" maxWidth="md" labelledby="tx-modal-title">
+        <template #header>
+            <h2 id="tx-modal-title" class="text-lg font-heading">
+                {{ mode === "create" ? "Adicionar transação" : "Editar transação" }}
+            </h2>
+        </template>
 
-                    <div class="space-y-3">
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Conta</div>
-                            <select v-model.number="form.accountId" class="w-full border rounded px-3 py-2">
-                                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-                            </select>
-                        </label>
+        <div class="space-y-3">
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Conta</div>
+                <select v-model.number="form.accountId" class="w-full border rounded px-3 py-2">
+                    <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </select>
+            </label>
 
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Data</div>
-                            <input v-model="form.date" type="date" class="w-full border rounded px-3 py-2" />
-                        </label>
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Data</div>
+                <input v-model="form.date" type="date" class="w-full border rounded px-3 py-2" />
+            </label>
 
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Valor</div>
-                            <MoneyCentsInput v-model="form.amountCents" />
-                        </label>
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Valor</div>
+                <MoneyCentsInput v-model="form.amountCents" />
+            </label>
 
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Categoria <span
-                                    class="text-xs text-gray-500">(subcategorias)</span></div>
-                            <select v-model.number="form.categoryId" class="w-full border rounded px-3 py-2">
-                                <option :value="null">— Sem categoria —</option>
-                                <option v-for="opt in childCategories" :key="opt.id" :value="opt.id">{{ opt.label }}
-                                </option>
-                            </select>
-                            <div v-if="catLoading" class="text-xs text-gray-500 mt-1">A carregar categorias…</div>
-                        </label>
-
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Descrição <span
-                                    class="text-xs text-gray-500">(opcional)</span></div>
-                            <input v-model="form.description" class="w-full border rounded px-3 py-2" />
-                        </label>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <button type="button" class="px-3 py-1.5 rounded border cursor-pointer"
-                            @click="close">Cancelar</button>
-                        <button type="button" class="px-3 py-1.5 rounded bg-black text-white cursor-pointer"
-                            @click="save">Guardar</button>
-                    </div>
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Categoria <span
+                        class="text-xs text-gray-500">(subcategorias)</span>
                 </div>
+                <select v-model.number="form.categoryId" class="w-full border rounded px-3 py-2">
+                    <option :value="null">— Sem categoria —</option>
+                    <option v-for="opt in childCategories" :key="opt.id" :value="opt.id">{{ opt.label }}
+                    </option>
+                </select>
+                <div v-if="catLoading" class="text-xs text-gray-500 mt-1">A carregar categorias…</div>
+            </label>
+
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Descrição <span class="text-xs text-gray-500">(opcional)</span>
+                </div>
+                <input v-model="form.description" class="w-full border rounded px-3 py-2" />
+            </label>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="px-3 py-1.5 rounded border cursor-pointer" @click="close">Cancelar</button>
+                <button type="button" class="px-3 py-1.5 rounded bg-black text-white cursor-pointer"
+                    @click="save">Guardar</button>
             </div>
-        </transition>
-    </teleport>
+        </template>
+    </BaseModal>
 </template>

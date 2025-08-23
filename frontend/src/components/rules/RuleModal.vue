@@ -3,6 +3,7 @@
 import { reactive, computed, watch } from "vue";
 import { useCategories } from "@/services/categories/categories.store";
 import type { RuleKind, TxRule, CreateRuleDto } from "@/types/rules";
+import BaseModal from "../ui/BaseModal.vue";
 
 const props = defineProps<{
     open: boolean;
@@ -104,83 +105,83 @@ function escapeRe(s: string) {
 </script>
 
 <template>
-    <teleport to="body">
-        <div v-if="open" class="fixed inset-0 z-[9999] grid place-items-center bg-black/40" @click.self="close">
-            <div class="bg-white rounded-xl w-full max-w-lg p-5 space-y-4 shadow-xl">
-                <h2 class="text-lg font-heading">{{ mode === "create" ? "Adicionar regra" : "Editar regra" }}</h2>
+    <BaseModal :open="open" @update:open="val => emit('update:open', val)" maxWidth="lg" labelledby="rule-modal-title">
+        <template #header>
+            <h2 id="rule-modal-title" class="text-lg font-heading">
+                {{ mode === "create" ? "Adicionar regra" : "Editar regra" }}
+            </h2>
+        </template>
 
-                <div class="grid gap-3">
-                    <label class="block">
-                        <div class="text-sm text-gray-600 mb-1">Nome</div>
-                        <input v-model="form.name" class="w-full border rounded px-3 py-2" />
+        <div class="grid gap-3">
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Nome</div>
+                <input v-model="form.name" class="w-full border rounded px-3 py-2" />
+            </label>
+
+            <div class="grid md:grid-cols-2 gap-3">
+                <label class="block">
+                    <div class="text-sm text-gray-600 mb-1">Padrão</div>
+                    <input v-model="form.pattern" class="w-full border rounded px-3 py-2"
+                        placeholder="ex.: CONTINENTE" />
+                </label>
+                <div class="flex items-center gap-4">
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" v-model="form.isRegex" />
+                        <span class="text-sm">Regex</span>
                     </label>
-
-                    <div class="grid md:grid-cols-2 gap-3">
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Padrão</div>
-                            <input v-model="form.pattern" class="w-full border rounded px-3 py-2"
-                                placeholder="ex.: CONTINENTE" />
-                        </label>
-                        <div class="flex items-center gap-4">
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" v-model="form.isRegex" />
-                                <span class="text-sm">Regex</span>
-                            </label>
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" v-model="form.caseSensitive" />
-                                <span class="text-sm">Sensível a maiúsculas</span>
-                            </label>
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" v-model="form.isActive" />
-                                <span class="text-sm">Ativa</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 gap-3">
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Tipo</div>
-                            <select v-model="form.kind" class="w-full border rounded px-3 py-2">
-                                <option :value="null">— (deixar como está)</option>
-                                <option value="DEBIT">Débito</option>
-                                <option value="CREDIT">Crédito</option>
-                            </select>
-                        </label>
-
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Categoria (subcategoria)</div>
-                            <select v-model.number="form.categoryId" class="w-full border rounded px-3 py-2">
-                                <option :value="null">— Sem categoria —</option>
-                                <option v-for="o in childOpts" :key="o.id" :value="o.id">{{ o.label }}</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    <label class="block">
-                        <div class="text-sm text-gray-600 mb-1">Prioridade</div>
-                        <input v-model.number="form.priority" type="number" min="0"
-                            class="w-full border rounded px-3 py-2" />
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" v-model="form.caseSensitive" />
+                        <span class="text-sm">Sensível a maiúsculas</span>
                     </label>
-
-                    <!-- quick tester -->
-                    <div class="rounded border p-3">
-                        <div class="text-sm text-gray-600 mb-1">Testar descrição</div>
-                        <input v-model="form.testDesc" class="w-full border rounded px-3 py-2"
-                            placeholder="cole aqui uma descrição…" />
-                        <p v-if="tester.error" class="text-red-600 text-sm mt-2">{{ tester.error }}</p>
-                        <p v-else class="text-sm mt-2" :class="tester.ok ? 'text-green-700' : 'text-gray-500'">
-                            {{ tester.ok ? "✅ Faz match" : "— Sem match" }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" class="px-3 py-1.5 rounded border cursor-pointer"
-                        @click="close">Cancelar</button>
-                    <button type="button" class="px-3 py-1.5 rounded bg-black text-white cursor-pointer"
-                        @click="save">Guardar</button>
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" v-model="form.isActive" />
+                        <span class="text-sm">Ativa</span>
+                    </label>
                 </div>
             </div>
+
+            <div class="grid md:grid-cols-2 gap-3">
+                <label class="block">
+                    <div class="text-sm text-gray-600 mb-1">Tipo</div>
+                    <select v-model="form.kind" class="w-full border rounded px-3 py-2">
+                        <option :value="null">— (deixar como está)</option>
+                        <option value="DEBIT">Débito</option>
+                        <option value="CREDIT">Crédito</option>
+                    </select>
+                </label>
+
+                <label class="block">
+                    <div class="text-sm text-gray-600 mb-1">Categoria (subcategoria)</div>
+                    <select v-model.number="form.categoryId" class="w-full border rounded px-3 py-2">
+                        <option :value="null">— Sem categoria —</option>
+                        <option v-for="o in childOpts" :key="o.id" :value="o.id">{{ o.label }}</option>
+                    </select>
+                </label>
+            </div>
+
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Prioridade</div>
+                <input v-model.number="form.priority" type="number" min="0" class="w-full border rounded px-3 py-2" />
+            </label>
+
+            <!-- quick tester -->
+            <div class="rounded border p-3">
+                <div class="text-sm text-gray-600 mb-1">Testar descrição</div>
+                <input v-model="form.testDesc" class="w-full border rounded px-3 py-2"
+                    placeholder="cole aqui uma descrição…" />
+                <p v-if="tester.error" class="text-red-600 text-sm mt-2">{{ tester.error }}</p>
+                <p v-else class="text-sm mt-2" :class="tester.ok ? 'text-green-700' : 'text-gray-500'">
+                    {{ tester.ok ? "✅ Faz match" : "— Sem match" }}
+                </p>
+            </div>
         </div>
-    </teleport>
+
+        <template #footer>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="px-3 py-1.5 rounded border cursor-pointer" @click="close">Cancelar</button>
+                <button type="button" class="px-3 py-1.5 rounded bg-black text-white cursor-pointer"
+                    @click="save">Guardar</button>
+            </div>
+        </template>
+    </BaseModal>
 </template>

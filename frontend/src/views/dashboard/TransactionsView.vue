@@ -8,6 +8,7 @@ import CategoryPickerModal from "@/components/transactions/CategoryPickerModal.v
 import { getDefaultForAccount, setDefaultForAccount } from "@/services/transactions/categoryDefaults.service";
 import { useCategories } from "@/services/categories/categories.store";
 import TransactionsImport from "@/components/transactions/TransactionsImport.vue";
+import Button from "@/components/ui/Button.vue";
 
 
 const tx = useTransactions();
@@ -182,13 +183,11 @@ const childColorById = computed(() => {
                     <label class="block text-sm text-gray-600">Até</label>
                     <input v-model="to" type="date" class="border rounded px-3 py-2" />
                 </div>
-                <button class="h-10 px-4 rounded bg-black text-white" @click="search">Filtrar</button>
+                <Button variant="primary" size="md" title="Filtrar" @click="search">Filtrar</Button>
             </div>
 
-            <button class="h-10 px-4 rounded bg-black text-white" :disabled="!hasAccounts" @click="show = true"
-                title="Adicionar transação">
-                Adicionar
-            </button>
+            <Button variant="primary" size="md" :disabled="!hasAccounts" title="Adicionar Transacção"
+                @click="show = true">Adicionar</Button>
         </div>
 
         <div v-if="!hasAccounts" class="text-amber-700">
@@ -249,9 +248,8 @@ const childColorById = computed(() => {
                         <span class="inline-block w-2.5 h-2.5 rounded-full ring-1 ring-gray-300 shrink-0"
                             :style="{ backgroundColor: childColorById.get(t.categoryId || 0) || 'transparent' }"
                             aria-hidden="true" />
-                        <button class="underline cursor-pointer truncate" @click="openPicker(t.id)">
-                            {{ displayNameById.get(t.categoryId || 0) || "Definir categoria…" }}
-                        </button>
+                        <Button variant="primary" size="md" title="Filtrar" @click="openPicker(t.id)">{{
+                            displayNameById.get(t.categoryId || 0) || "Definir categoria…" }}</Button>
                     </div>
 
                     <div class="whitespace-nowrap">
@@ -265,7 +263,7 @@ const childColorById = computed(() => {
                     </div>
 
                     <div class="whitespace-nowrap">
-                        <button class="text-sm underline text-red-700" @click="remove(t.id)">Eliminar</button>
+                        <Button variant="danger" size="md" title="Filtrar" @click="remove(t.id)">Eliminar</Button>
                     </div>
                 </li>
 

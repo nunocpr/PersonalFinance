@@ -5,6 +5,7 @@ import { onMounted, ref } from "vue";
 import Draggable from "vuedraggable";
 import { useRules } from "@/services/rules/rules.store";
 import RuleModal from "@/components/rules/RuleModal.vue";
+import Button from "@/components/ui/Button.vue";
 
 const { items, loading, error, load, add, edit, remove, reorder, labelByCategoryId } = useRules();
 
@@ -33,8 +34,9 @@ async function onEnd() {
     <div class="space-y-6">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-heading">Regras de classificação</h1>
-            <button class="px-3 py-1.5 rounded bg-black text-white cursor-pointer" @click="openCreate">Adicionar
-                regra</button>
+            <Button variant="primary" size="md" title="Adicionar Regra" @click="openCreate">Adicionar
+                regra</Button>
+
         </div>
 
         <div v-if="loading" class="text-gray-600">A carregar…</div>
@@ -63,14 +65,14 @@ async function onEnd() {
                         </div>
                         <div class="text-sm text-gray-500">Prioridade: {{ r.priority }}</div>
                         <div class="flex gap-2 justify-end">
-                            <button class="px-2 py-1 rounded border text-sm" @click="openEdit(r)">Editar</button>
-                            <button class="px-2 py-1 rounded border text-sm"
+                            <Button variant="primary" size="md" title="Adicionar Regra"
+                                @click="openEdit(r)">Editar</Button>
+                            <Button variant="primary" size="md" title="Editar Regra"
                                 :class="r.isActive ? 'border-amber-300 text-amber-700' : 'border-gray-300 text-gray-600'"
-                                @click="edit(r.id, { isActive: !r.isActive })">
-                                {{ r.isActive ? 'Desativar' : 'Ativar' }}
-                            </button>
-                            <button class="px-2 py-1 rounded border border-red-300 text-red-700 text-sm"
-                                @click="remove(r.id)">Eliminar</button>
+                                @click="edit(r.id, { isActive: !r.isActive })"> {{ r.isActive ? 'Desativar' : 'Ativar'
+                                }}</Button>
+                            <Button variant="danger" size="md" title="Eliminar Regra"
+                                @click="remove(r.id)">Eliminar</Button>
                         </div>
                     </div>
                 </template>

@@ -7,6 +7,7 @@ import { useTransactions } from "@/services/transactions/transactions.store";
 import { useAccounts } from "@/services/accounts/accounts.store";
 import { useCategories } from "@/services/categories/categories.store";
 import { formatCentsEUR } from "@/utils/money";
+import Button from "@/components/ui/Button.vue";
 
 // stores
 const tx = useTransactions();
@@ -310,8 +311,8 @@ function monthValueForSub(subId: number, key: string) {
                     </select>
                 </label>
             </template>
+            <Button variant="primary" size="md" title="Atualizar" @click="refresh">Atualizar</Button>
 
-            <button class="px-3 py-1.5 rounded bg-black text-white" @click="refresh">Atualizar</button>
         </section>
 
         <!-- Loading / error -->
@@ -386,7 +387,7 @@ function monthValueForSub(subId: number, key: string) {
                             :style="hoveredCatId === cat.id ? { background: catRGBA(cat.color, .18), borderRadius: '6px', paddingRight: '6px' } : {}">
                             <template v-if="hoveredCatId === cat.id">
                                 <span class="font-medium">{{ formatCentsEUR(totalForSub(sub.id))
-                                }}</span>
+                                    }}</span>
                                 <span class="text-gray-500"> ({{ percentOf(sub.id).toFixed(1) }}%)</span>
                             </template>
                             <template v-else>

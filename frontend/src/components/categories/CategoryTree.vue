@@ -4,6 +4,7 @@ import Draggable from "vuedraggable";
 import { useCategories } from "@/services/categories/categories.store";
 import CategoryModal from "./CategoryModal.vue";
 import type { Category } from "@/types/categories";
+import Button from "../ui/Button.vue";
 
 const props = defineProps<{ nodes: Category[] }>();
 
@@ -12,8 +13,8 @@ const { reorder, addChild, remove, edit, addRoot, getTypeLabelPt } = useCategori
 /* ---------- Modal state ---------- */
 const showModal = ref(false);
 const modalMode = ref<"create" | "edit">("create");
-const modalParent = ref<Category | null>(null); // parent for child context
-const modalValue = ref<Category | null>(null); // category being edited
+const modalParent = ref<Category | null>(null);
+const modalValue = ref<Category | null>(null);
 
 function openCreateRoot() {
     modalMode.value = "create";
@@ -43,14 +44,12 @@ function openEditChild(child: Category, parent: Category) {
 async function onSave(payload: { name: string; description: string | null; color?: string | null; type?: any }) {
     if (modalMode.value === "create") {
         if (modalParent.value) {
-            // creating subcategory: inherit parent's type
             await addChild(modalParent.value.id, {
                 name: payload.name,
                 description: payload.description ?? undefined,
                 type: (modalParent.value as any).type,
             } as any);
         } else {
-            // creating root: use provided type/color
             await addRoot({
                 name: payload.name,
                 description: payload.description ?? undefined,
@@ -59,10 +58,8 @@ async function onSave(payload: { name: string; description: string | null; color
             } as any);
         }
     } else if (modalMode.value === "edit" && modalValue.value) {
-        // patch differs for root vs child
         const patch: any = { name: payload.name, description: payload.description };
         if (!modalParent.value) {
-            // editing root: allow type/color changes
             patch.type = payload.type;
             patch.color = payload.color ?? null;
         }
@@ -88,46 +85,48 @@ async function onChildrenEnd(parent: Category) {
     <div class="space-y-4 mt-12">
         <!-- Top bar action -->
         <div class="flex justify-start">
-            <button class="cursor-pointer px-3 py-1.5 rounded bg-black text-white" @click="openCreateRoot">
-                Adicionar categoria
-            </button>
+            <Button variant="primary" size="md" title="Adicionar Categoria" @click="openCreateRoot">Adicionar
+                categoria</Button>
         </div>
 
         <!-- ROOTS -->
         <Draggable :list="props.nodes" item-key="id" handle=".grab" @end="onRootsEnd">
             <template #item="{ element: root }">
-                <section class="border rounded-md bg-white p-4 shadow-md">
+                <section class="border rounded-md bg-white p-4 shadow-md mb-2">
                     <!-- Root header -->
                     <div class="flex items-center gap-3">
                         <span class="grab cursor-grab select-none" title="Arrastar para ordenar">⋮⋮</span>
 
                         <div class="flex-1 min-w-0">
                             <h3 class="font-medium truncate">
+                                <span class="inline-block w-2.5 h-2.5 rounded-full ring-1 ring-gray-300 shrink-0 mr-1.5"
+                                    :style="{ backgroundColor: root.color || '#000' }"></span>
+
                                 {{ root.name }}
-                                <span class="ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((root as any).type)
-                                    }}</span>
+                                <span class=" ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((root as
+                                    any).type) }}</span>
                             </h3>
                             <p v-if="root.description" class="text-xs text-gray-500 mt-1 truncate">{{ root.description
-                                }}</p>
+                            }}</p>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button class="cursor-pointer px-2 py-1 rounded border"
-                                @click="openEditRoot(root)">Editar</button>
-                            <button class="cursor-pointer px-2 py-1 rounded border"
-                                @click="openCreateChild(root)">Adicionar subcategoria</button>
-                            <button class="cursor-pointer px-2 py-1 rounded border border-red-300 text-red-600"
-                                @click="onDelete(root)">Eliminar</button>
+                            <Button variant="ghost" size="sm" title="Editar Categoria"
+                                @click="openEditRoot(root)">Editar</Button>
+                            <Button variant="primary" size="sm" title="Criar subcategoria"
+                                @click="openCreateChild(root)">Criar subcategoria</Button>
+                            <Button variant="danger" size="sm" title="Eliminar subcategoria"
+                                @click="onDelete(root)">Eliminar</Button>
                         </div>
                     </div>
 
                     <!-- CHILDREN -->
-                    <div class="mt-3 pl-7">
+                    <div class="mt-1 pl-7">
                         <Draggable :list="root.children" item-key="id" handle=".grab"
                             :group="{ name: 'children-' + root.id, pull: false, put: false }"
                             @end="() => onChildrenEnd(root)">
                             <template #item="{ element: child }">
-                                <div class="flex items-center gap-3 py-1">
+                                <div class="flex items-center gap-2 py-1">
                                     <span class="grab cursor-grab select-none" title="Arrastar para ordenar">⋮⋮</span>
 
                                     <div class="flex-1 min-w-0">
@@ -135,18 +134,18 @@ async function onChildrenEnd(parent: Category) {
                                             {{ child.name }}
                                             <span class="ml-2 text-xs text-gray-600">• {{ getTypeLabelPt((child as
                                                 any).type)
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <p v-if="child.description" class="text-xs text-gray-500 truncate">{{
                                             child.description }}</p>
                                     </div>
 
-                                    <div class="flex items-center gap-2">
-                                        <button class="cursor-pointer px-2 py-1 rounded border"
-                                            @click="openEditChild(child, root)">Editar</button>
-                                        <button
-                                            class="cursor-pointer px-2 py-1 rounded border border-red-300 text-red-600"
-                                            @click="onDelete(child)">Eliminar</button>
+                                    <div class="flex items-center gap-1">
+                                        <Button variant="ghost" size="sm" title="Editar Categoria"
+                                            @click="openEditChild(child, root)">Editar</Button>
+                                        <Button variant="danger" size="sm" title="Eliminar subcategoria"
+                                            @click="onDelete(child)">Eliminar</Button>
+
                                     </div>
                                 </div>
                             </template>

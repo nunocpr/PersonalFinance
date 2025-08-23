@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import { reactive, computed, watch } from "vue";
 import type { Category, CategoryKind } from "@/types/categories";
+import BaseModal from "../ui/BaseModal.vue";
+import Button from "../ui/Button.vue";
 
 const props = defineProps<{
     open: boolean;
@@ -73,65 +75,60 @@ function save() {
 </script>
 
 <template>
-    <teleport to="body">
-        <transition name="fade">
-            <div v-if="open" class="fixed inset-0 z-[9999] grid place-items-center bg-black/40" @click.self="close">
-                <div class="bg-white rounded-xl w-full max-w-md p-5 space-y-4 shadow-xl">
-                    <h2 class="text-lg font-heading">
-                        {{
-                            mode === "create"
-                                ? (isChild ? `Adicionar subcategoria em "${parent?.name}"` : "Adicionar categoria")
-                                : (isChild ? `Editar subcategoria` : "Editar categoria")
-                        }}
-                    </h2>
+    <BaseModal :open="open" @update:open="val => emit('update:open', val)" maxWidth="md" labelledby="cat-modal-title">
+        <template #header>
+            <h2 id="cat-modal-title" class="text-lg font-heading">
+                {{
+                    mode === "create"
+                        ? (isChild ? `Adicionar subcategoria em "${parent?.name}"` : "Adicionar categoria")
+                        : (isChild ? `Editar subcategoria` : "Editar categoria")
+                }}
+            </h2>
+        </template>
 
-                    <div class="space-y-3">
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Nome</div>
-                            <input v-model="form.name" class="w-full border rounded px-3 py-2" />
-                        </label>
+        <!-- body (unchanged) -->
+        <div class="space-y-3">
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Nome</div>
+                <input v-model="form.name" class="w-full border rounded px-3 py-2" />
+            </label>
 
-                        <label class="block">
-                            <div class="text-sm text-gray-600 mb-1">Descrição</div>
-                            <input v-model="form.description" class="w-full border rounded px-3 py-2" />
-                        </label>
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Descrição</div>
+                <input v-model="form.description" class="w-full border rounded px-3 py-2" />
+            </label>
 
-                        <!-- Only for ROOT categories -->
-                        <div v-if="!isChild" class="grid grid-cols-2 gap-3">
-                            <label class="block">
-                                <div class="text-sm text-gray-600 mb-1">Tipo</div>
-                                <select v-model="form.type" class="w-full border rounded px-3 py-2">
-                                    <option value="expense">Despesa</option>
-                                    <option value="income">Receita</option>
-                                    <option value="transfer">Transferência</option>
-                                </select>
-                            </label>
+            <!-- Only for ROOT categories -->
+            <div v-if="!isChild" class="grid grid-cols-2 gap-3">
+                <label class="block">
+                    <div class="text-sm text-gray-600 mb-1">Tipo</div>
+                    <select v-model="form.type" class="w-full border rounded px-3 py-2">
+                        <option value="expense">Despesa</option>
+                        <option value="income">Receita</option>
+                        <option value="transfer">Transferência</option>
+                    </select>
+                </label>
 
-                            <label class="block">
-                                <div class="text-sm text-gray-600 mb-1">Cor</div>
-                                <input type="color" v-model="form.color" class="w-full h-10 border rounded" />
-                            </label>
-                        </div>
-
-                        <!-- Helper note for children -->
-                        <p v-else class="text-xs text-gray-500">
-                            A subcategoria herda o <strong>tipo</strong> e a <strong>cor</strong> da categoria
-                            principal.
-                        </p>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <button type="button" class="px-3 py-1.5 rounded border cursor-pointer"
-                            @click="close">Cancelar</button>
-                        <button type="button" class="px-3 py-1.5 rounded bg-black text-white cursor-pointer"
-                            @click="save">
-                            Guardar
-                        </button>
-                    </div>
-                </div>
+                <label class="block">
+                    <div class="text-sm text-gray-600 mb-1">Cor</div>
+                    <input type="color" v-model="form.color" class="w-full h-10 border rounded" />
+                </label>
             </div>
-        </transition>
-    </teleport>
+
+            <!-- Helper note for children -->
+            <p v-else class="text-xs text-gray-500">
+                A subcategoria herda o <strong>tipo</strong> e a <strong>cor</strong> da categoria
+                principal.
+            </p>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" title="Editar Conta" @click="close">Cancelar</Button>
+                <Button variant="ghost" size="sm" title="Editar Conta" @click="save">Guardar</Button>
+            </div>
+        </template>
+    </BaseModal>
 </template>
 
 <style scoped>

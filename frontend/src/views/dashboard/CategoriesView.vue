@@ -37,13 +37,11 @@ async function createRoot() {
 
 <template>
     <div class="space-y-6">
-        <!-- header matches AccountsView -->
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-heading">Gerir categorias</h1>
             <RouterLink class="underline" :to="{ name: 'dashboard' }">Voltar ao painel principal</RouterLink>
         </div>
 
-        <!-- states & tree (kept consistent with Accounts view spacing) -->
         <div v-if="loading" class="text-gray-600">A carregar categorias…</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>
         <div v-else-if="isEmpty" class="text-gray-600">Não existem categorias.</div>
