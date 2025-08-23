@@ -39,7 +39,7 @@ async function savePassword() {
 </script>
 
 <template>
-    <div class="grid md:grid-cols-3 gap-12 items-stretch">
+    <div class="grid md:grid-cols-3 gap-12 items-stretch mt-2 md:mt-6">
         <section class="bg-white rounded-md p-6 shadow-sm border flex flex-col">
             <h2 class="font-heading text-xl mb-4">Perfil</h2>
             <div class="space-y-3 flex flex-col flex-grow">

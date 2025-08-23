@@ -161,11 +161,7 @@ const childColorById = computed(() => {
 </script>
 
 <template>
-    <!-- Page Header-->
-    <header class="flex items-center justify-between">
-        <h1 class="text-xl font-heading">Gerir transacções</h1>
-    </header>
-    <div class="space-y-12 gap-3 mt-12">
+    <div class="space-y-12 gap-3 mt-2 md:mt-6">
 
         <!-- Transaction Search & Filters-->
         <div class="flex flex-wrap items-end gap-3 justify-between">

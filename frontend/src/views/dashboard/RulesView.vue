@@ -31,13 +31,9 @@ async function onEnd() {
 </script>
 
 <template>
-    <div class="space-y-6">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-heading">Regras de classificação</h1>
-            <Button variant="primary" size="md" title="Adicionar Regra" @click="openCreate">Adicionar
-                regra</Button>
-
-        </div>
+    <div class="space-y-6 mt-2 md:mt-6">
+        <Button variant="primary" size="md" title="Adicionar Regra" @click="openCreate">Adicionar
+            regra</Button>
 
         <div v-if="loading" class="text-gray-600">A carregar…</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>

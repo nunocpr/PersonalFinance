@@ -269,7 +269,7 @@ function monthValueForSub(subId: number, key: string) {
 </script>
 
 <template>
-    <div class="space-y-8">
+    <div class="space-y-8 mt-2 md:mt-6">
         <!-- Controls -->
         <section class="flex flex-wrap items-end gap-3">
             <label class="text-sm text-gray-700">

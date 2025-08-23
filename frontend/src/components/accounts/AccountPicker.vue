@@ -13,7 +13,6 @@ const emit = defineEmits<{ (e: "update:modelValue", v: number | null): void }>()
 
 const open = ref(false);
 
-// --- tiny local directive (scoped to this SFC) ---
 const vClickOutside: Directive<HTMLElement, () => void> = {
     beforeMount(el, binding) {
         const handler = (e: Event) => {
@@ -34,7 +33,6 @@ const vClickOutside: Directive<HTMLElement, () => void> = {
         }
     },
 };
-// --------------------------------------------------
 
 const selected = computed(() => props.accounts.find(a => a.id === props.modelValue) || null);
 const selectedBalance = computed(() => selected.value ? formatCentsEUR(selected.value.balance) : "");
@@ -51,41 +49,56 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onEsc));
 </script>
 
 <template>
-    <!-- attach to a wrapper that contains BOTH the trigger and the menu -->
     <div v-click-outside="() => (open = false)" class="relative">
-        <Button variant="ghost" size="lg" title="Criar Conta" @click="toggle">
+        <Button variant="ghost" size="lg" title="Seleccionar Conta"
+            class="group fill-night group-hover:fill-white data-[open=true]:bg-secondary data-[open=true]:text-white data-[open=true]:fill-white"
+            :data-open="open" @click="toggle">
             <div class="truncate">
                 <div class="truncate">
                     <span v-if="selected" class="text-sm">{{ selected.name }}</span>
-                    <span v-else class="text-sm text-gray-500">Escolhe uma conta</span>
+                    <span v-else class="text-sm
+                 group-hover:text-white/60
+                 data-[open=true]:text-white/60">
+                        Escolhe uma conta
+                    </span>
                 </div>
-                <div v-if="selected" class="text-right text-xs text-gray-500">{{ selectedBalance }}</div>
+
+                <div v-if="selected" class="text-right text-xs transition-colors
+               group-hover:text-white/60
+               group:data-[open=true]:!text-white/60">
+                    {{ selectedBalance }}
+                </div>
             </div>
-            <svg viewBox="0 0 24 24" class="w-4 h-4 fill-gray-700" aria-hidden="true">
+
+            <svg viewBox="0 0 24 24"
+                class="w-4 h-4 group-hover:fill-white group-data-[open=true]:fill-white transition-colors"
+                aria-hidden="true">
                 <path d="M6 9l6 6 6-6" />
             </svg>
         </Button>
 
+
         <div v-if="open"
-            class="absolute z-50 mt-1 w-[18rem] right-0 max-h-72 overflow-auto bg-gray-50 border rounded drop-shadow-lg">
+            class="fixed md:absolute md:w-[16rem] md:max-w-none md:left-auto inset-0 z-40 top-16 md:top-12 bg-secondary text-white rounded-b md:rounded drop-shadow-lg max-h-[60vh] h-fit">
             <template v-if="props.accounts.length">
                 <button v-for="a in props.accounts" :key="a.id" type="button" :class="[
-                    'w-full text-left px-3 py-2 cursor-pointer flex items-center justify-between gap-3',
+                    'w-full text-left px-3 py-2 cursor-pointer flex items-center justify-between gap-3 hover:bg-primary text-night transition-colors border-b border-white/40 last:border-transparent',
                     a.id === props.modelValue
-                        ? 'bg-gray-600 text-gray-200 hover:bg-gray-500'
-                        : 'bg-gray-100 hover:bg-gray-50 text-gray-500'
+                        ? 'bg-primary'
+                        : 'bg-secondary text-white hover:text-night'
                 ]" @click="select(a.id)">
                     <span class="truncate text-sm">{{ a.name }}</span>
                     <span class="text-xs shrink-0">{{ formatCentsEUR(a.balance) }}</span>
                 </button>
 
-                <div class="sticky bottom-0 bg-gray-100 border-t px-3 py-2 text-sm flex items-center justify-between">
-                    <span>Total de contas</span>
-                    <strong>{{ totalAllLabel }}</strong>
+                <div
+                    class="sticky bottom-0 px-3 py-2 text-sm flex items-center justify-between bg-secondary text-white">
+                    <span>Total</span>
+                    <span class="text-xs">{{ totalAllLabel }}</span>
                 </div>
             </template>
 
-            <div v-else class="px-3 py-3 text-sm text-gray-600">
+            <div v-else class="px-3 py-3 text-sm bg-secondary-light text-white">
                 Não tens contas. Cria a tua primeira conta em “Contas”.
             </div>
         </div>

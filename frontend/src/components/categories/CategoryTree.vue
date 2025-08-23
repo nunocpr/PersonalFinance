@@ -82,7 +82,7 @@ async function onChildrenEnd(parent: Category) {
 </script>
 
 <template>
-    <div class="space-y-4 mt-12">
+    <div class="space-y-4">
         <!-- Top bar action -->
         <div class="flex justify-start">
             <Button variant="primary" size="md" title="Adicionar Categoria" @click="openCreateRoot">Adicionar
@@ -90,7 +90,7 @@ async function onChildrenEnd(parent: Category) {
         </div>
 
         <!-- ROOTS -->
-        <Draggable :list="props.nodes" item-key="id" handle=".grab" @end="onRootsEnd">
+        <Draggable :list="props.nodes" item-key="id" handle=".grab" @end="onRootsEnd" class="mt-4 md:mt-12">
             <template #item="{ element: root }">
                 <section class="border rounded-md bg-white p-4 shadow-md mb-2">
                     <!-- Root header -->

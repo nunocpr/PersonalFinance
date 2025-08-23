@@ -79,7 +79,8 @@ async function doLogout() {
 </script>
 
 <template>
-    <div class="h-screen grid overflow-hidden bg-alabaster text-gray-900" style="grid-template-columns: auto 1fr;">
+    <div
+        class="h-screen grid overflow-hidden bg-alabaster text-gray-900 grid-cols-1 md:[grid-template-columns:auto_1fr]">
         <!-- SIDEBAR -->
         <aside :class="[
             'hidden md:grid h-full border-r border-night bg-secondary text-white grid-rows-[auto_1fr_auto] relative transition-[width] duration-200',
@@ -140,7 +141,7 @@ async function doLogout() {
         </nav>
 
         <!-- CONTENT -->
-        <section class="min-h-0 flex flex-col overflow-hidden">
+        <section class="min-h-0 flex flex-col md:overflow-hidden">
             <header
                 class="border-b bg-primary text-night border-night sticky top-0 z-10 px-4 md:px-12 flex items-center gap-6 h-16">
                 <h1 class="font-heading font-semibold">{{ currentTitle }}</h1>
@@ -154,37 +155,36 @@ async function doLogout() {
                     <RouterLink v-if="loaded && !accounts.length" class="text-sm underline text-gray-700"
                         :to="{ name: 'accounts' }">Criar conta</RouterLink>
                 </div>
+
                 <!-- User dropdown -->
                 <div class="relative" ref="menuRef">
                     <button type="button"
-                        class="grid place-items-center w-9 h-9 rounded-full bg-secondary text-white hover:bg-secondary-light cursor-pointer"
-                        @click.stop="toggleUserMenu" aria-haspopup="menu" :aria-expanded="userMenuOpen"
-                        title="Abrir menu do utilizador">
+                        class="grid place-items-center w-9 h-9 rounded-full bg-secondary text-white hover:bg-secondary-light cursor-pointer transition-colors group data-[open=true]:bg-secondary-light"
+                        :data-open="userMenuOpen" @click.stop="toggleUserMenu" aria-haspopup="menu"
+                        :aria-expanded="userMenuOpen" title="Abrir menu do utilizador">
                         {{ initial }}
                     </button>
 
                     <!-- Dropdown panel -->
                     <transition name="fade">
-                        <div v-if="userMenuOpen"
-                            class="absolute right-0 mt-2 w-64 rounded-xl border border-gray-50 bg-white shadow-lg overflow-hidden"
-                            role="menu">
-                            <div class="px-4 py-3 border-b border-gray-100">
-                                <div class="mt-2 text-sm text-gray-600">Olá, <span class="font-medium">{{ firstName
-                                }}</span></div>
-                            </div>
+                        <div v-if="userMenuOpen" role="menu"
+                            class="fixed md:absolute md:w-[16rem] md:max-w-none md:left-auto inset-0 z-40 top-16 md:top-12 bg-secondary text-white rounded-b md:rounded drop-shadow-lg max-h-[60vh] h-fit">
+                            <RouterLink :to="{ name: 'profile' }" role="menuitem"
+                                class="block px-4 py-2 text-sm bg-secondary text-white hover:bg-primary hover:text-night transition-colors border-b border-white/40 last:border-0"
+                                @click.native="closeUserMenu">
+                                Perfil
+                            </RouterLink>
 
-                            <div class="py-1">
-                                <RouterLink :to="{ name: 'profile' }" class="block px-4 py-2 text-sm hover:bg-gray-50"
-                                    role="menuitem" @click.native="closeUserMenu">
-                                    Perfil
-                                </RouterLink>
+                            <div class="p-2 mt-2">
+                                <Button variant="primary" size="sm" class="w-full hover:bg-red-700"
+                                    title="Terminar sessão" @click="doLogout">
+                                    Terminar sessão
+                                </Button>
                             </div>
-                            <Button variant="primary" size="md" @click="doLogout" class="hover:bg-red-700 w-full"
-                                title="Terminar sessão">Terminar
-                                sessão</Button>
                         </div>
                     </transition>
                 </div>
+
             </header>
 
             <!-- Main outlet -->

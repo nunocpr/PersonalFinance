@@ -51,10 +51,10 @@ const roundedMap = {
 };
 
 const variants: Record<Variant, string> = {
-    primary: "border-1 border-black bg-black text-white hover:bg-black/80 focus-visible:ring-black",
-    secondary: "border-1 border-black bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring-gray-900",
-    ghost: "border-1 border-black bg-transparent border-black text-gray-900 hover:bg-gray-100 focus-visible:ring-gray-400",
-    danger: "border-1 border-black bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600",
+    primary: "border-1 border-night bg-night text-white hover:bg-night/80 focus-visible:ring-night",
+    secondary: "border-1 border-night bg-night text-white hover:bg-gray-800 focus-visible:ring-night",
+    ghost: "border-1 border-night bg-transparent border-night text-night hover:bg-secondary hover:text-white focus-visible:ring-gray-400",
+    danger: "border-1 border-night bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600",
 };
 
 const cls = computed(() => [
