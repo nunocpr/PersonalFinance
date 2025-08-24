@@ -21,15 +21,15 @@ export interface TxListResponse {
 }
 
 export interface TxFilters {
-    page?: number;
-    pageSize?: number;
     accountId?: number;
     categoryId?: number;
+    q?: string;
     from?: string;
     to?: string;
-    q?: string;
-    sortBy?: "date" | "amount" | "createdAt";
+    sortBy?: "date" | "amount";
     sortDir?: "asc" | "desc";
+    page?: number;
+    pageSize?: number;
 }
 
 export interface TxCreateDto {

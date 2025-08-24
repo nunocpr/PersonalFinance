@@ -125,7 +125,7 @@ function save() {
         <template #footer>
             <div class="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" title="Editar Conta" @click="close">Cancelar</Button>
-                <Button variant="ghost" size="sm" title="Editar Conta" @click="save">Guardar</Button>
+                <Button variant="primary" size="sm" title="Editar Conta" @click="save">Guardar</Button>
             </div>
         </template>
     </BaseModal>

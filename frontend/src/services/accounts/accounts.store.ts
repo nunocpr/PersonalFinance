@@ -7,7 +7,12 @@ const loaded = ref(false);
 const loading = ref(false);
 
 const ACTIVE_KEY = "pf_active_account";
-const activeId = ref<number | null>(null);
+
+// Initialize from localStorage immediately (before any component mounts)
+const savedInitial = (() => {
+    try { return localStorage.getItem(ACTIVE_KEY); } catch { return null; }
+})();
+const activeId = ref<number | null>(savedInitial ? Number(savedInitial) : null);
 
 const activeAccount = computed(
     () => items.value.find((a) => a.id === activeId.value) || null
@@ -15,8 +20,10 @@ const activeAccount = computed(
 
 function setActive(id: number | null) {
     activeId.value = id;
-    if (id == null) localStorage.removeItem(ACTIVE_KEY);
-    else localStorage.setItem(ACTIVE_KEY, String(id));
+    try {
+        if (id == null) localStorage.removeItem(ACTIVE_KEY);
+        else localStorage.setItem(ACTIVE_KEY, String(id));
+    } catch { /* ignore */ }
 }
 
 const ACCOUNT_TYPE_LABELS_PT: Record<string, string> = {
@@ -41,15 +48,18 @@ export function useAccounts() {
             items.value = await AccountService.list();
             loaded.value = true;
 
-            const saved = localStorage.getItem(ACTIVE_KEY);
-            if (activeId.value == null && saved) activeId.value = Number(saved);
+            // Ensure activeId is valid
             if (activeId.value != null && !items.value.some(a => a.id === activeId.value)) {
                 setActive(items.value[0]?.id ?? null);
             }
+            if (activeId.value == null && items.value.length) {
+                setActive(items.value[0].id);
+            }
         } finally {
-            loading.value = false;          // <-- novo
+            loading.value = false;
         }
     }
+
     async function add(payload: CreateAccountDto) {
         const a = await AccountService.create(payload);
         items.value.push(a);

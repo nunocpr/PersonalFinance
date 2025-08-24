@@ -23,4 +23,19 @@ export const TransactionService = {
     async remove(id: string | number): Promise<void> {
         await client.delete(`/transactions/${id}`);
     },
+    async groupByCategory(params: TxFilters & { accountId: number }) {
+        const { data } = await client.get("/transactions/group-by-category", { params });
+        return data as {
+            groups: Array<{
+                categoryId: number | null;
+                count: number;
+                sum: number;
+                minDate: string | null;
+                maxDate: string | null;
+                categoryName: string | null;
+                parentName: string | null;
+                color: string | null;
+            }>;
+        };
+    },
 };

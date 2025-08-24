@@ -279,7 +279,6 @@ async function importAll() {
                                 </span>
 
                             </Button>
-                            <!-- <button class="underline cursor-pointer whitespace-nowrap" @click="">Alterar</button> -->
                         </div>
 
                         <button class="px-2 py-0.5 rounded text-xs font-medium w-max cursor-pointer" :class="d.kind === 'DEBIT'

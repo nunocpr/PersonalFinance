@@ -51,7 +51,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onEsc));
 <template>
     <div v-click-outside="() => (open = false)" class="relative">
         <Button variant="ghost" size="lg" title="Seleccionar Conta"
-            class="group fill-night group-hover:fill-white data-[open=true]:bg-secondary data-[open=true]:text-white data-[open=true]:fill-white"
+            class="group fill-night group-hover:fill-white data-[open=true]:bg-secondary data-[open=true]:text-white data-[open=true]:fill-white !px-3 md:!px-4"
             :data-open="open" @click="toggle">
             <div class="truncate">
                 <div class="truncate">

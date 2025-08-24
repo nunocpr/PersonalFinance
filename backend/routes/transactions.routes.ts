@@ -10,5 +10,6 @@ router.get("/", ctrl.list);
 router.post("/", ctrl.create);
 router.put("/:id", ctrl.update);
 router.delete("/:id", ctrl.remove);
+router.get("/group-by-category", ctrl.groupByCategory);
 
 export default router;

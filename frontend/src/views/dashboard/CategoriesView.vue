@@ -37,10 +37,10 @@ async function createRoot() {
 
 <template>
     <div class="space-y-6 mt-2 md:mt-6">
+        <CategoryTree :nodes="roots" class="block" />
         <div v-if="loading" class="text-gray-600">A carregar categorias…</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>
         <div v-else-if="isEmpty" class="text-gray-600">Não existem categorias.</div>
 
-        <CategoryTree v-else :nodes="roots" class="block" />
     </div>
 </template>

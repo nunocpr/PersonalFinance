@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// DashboardLayout.vue
 import { onMounted, ref, computed, onBeforeUnmount } from "vue";
 import { useAuth } from "@/services/auth/auth.store";
 import { useRoute, useRouter } from "vue-router";
@@ -69,13 +70,19 @@ onMounted(() => document.addEventListener("click", onDocClick));
 onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
 // ── Accounts in header ──────────────────────────────────────
-const { items: accounts, activeId, load, loaded } = useAccounts();
+const { items: accounts, activeId, setActive, load, loaded } = useAccounts();
 onMounted(() => { load(); });
 
 async function doLogout() {
     await clearSession();
     router.replace({ name: "auth-login" });
 }
+
+const activeIdModel = computed<number | null>({
+    get: () => activeId.value,
+    set: (v) => setActive(v),
+});
+
 </script>
 
 <template>
@@ -143,17 +150,14 @@ async function doLogout() {
         <!-- CONTENT -->
         <section class="min-h-0 flex flex-col md:overflow-hidden">
             <header
-                class="border-b bg-primary text-night border-night sticky top-0 z-10 px-4 md:px-12 flex items-center gap-6 h-16">
+                class="border-b bg-primary text-night border-night sticky top-0 z-10 px-4 md:px-12 flex items-center gap-3 md:gap-6 h-16">
                 <h1 class="font-heading font-semibold">{{ currentTitle }}</h1>
 
                 <!-- Right cluster: stable & friendly -->
                 <div class="ml-auto flex items-center gap-4">
                     <div class="flex items-center gap-4">
-                        <AccountPicker :accounts="accounts" v-model="activeId" />
+                        <AccountPicker :accounts="accounts" v-model="activeIdModel" />
                     </div>
-
-                    <RouterLink v-if="loaded && !accounts.length" class="text-sm underline text-gray-700"
-                        :to="{ name: 'accounts' }">Criar conta</RouterLink>
                 </div>
 
                 <!-- User dropdown -->

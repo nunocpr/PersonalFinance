@@ -12,6 +12,16 @@ export const list: RequestHandler = async (req, res) => {
     }
 };
 
+export const groupByCategory: RequestHandler = async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+        const data = await svc.groupByCategory(req.user.publicId, req.query as any);
+        res.json(data);
+    } catch (e: any) {
+        res.status(400).json({ message: e?.message ?? "Falha ao carregar transações." });
+    }
+};
+
 export const create: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {

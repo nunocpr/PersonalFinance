@@ -29,13 +29,25 @@ export async function list(userPublicId: string, f: ListFilters) {
     const page = clamp(Number(f.page || 1), 1, 10_000);
     const pageSize = clamp(Number(f.pageSize || 20), 1, 100);
 
+    // allow either a number OR an explicit null for uncategorized
+    const hasUncategorized = Object.prototype.hasOwnProperty.call(f, "categoryId") && f.categoryId === null;
+
     const where: Prisma.TransactionWhereInput = {
         account: { user: { publicId: userPublicId } },
         ...(typeof f.accountId === "number" ? { accountId: f.accountId } : {}),
-        ...(typeof f.categoryId === "number" ? { categoryId: f.categoryId } : {}),
+        ...(typeof f.categoryId === "number"
+            ? { categoryId: f.categoryId }
+            : hasUncategorized
+                ? { categoryId: null }
+                : {}),
         ...(f.q ? { description: { contains: f.q, mode: "insensitive" } } : {}),
         ...(f.from || f.to
-            ? { date: { ...(f.from ? { gte: new Date(f.from) } : {}), ...(f.to ? { lte: new Date(f.to) } : {}) } }
+            ? {
+                date: {
+                    ...(f.from ? { gte: new Date(f.from) } : {}),
+                    ...(f.to ? { lte: new Date(f.to) } : {}),
+                },
+            }
             : {}),
     };
 
@@ -54,10 +66,64 @@ export async function list(userPublicId: string, f: ListFilters) {
         }),
     ]);
 
-    const items = rows.map(toDto);
-    return { items, total, page, pageSize };
+    return { items: rows.map(toDto), total, page, pageSize };
 }
 
+export async function groupByCategory(userPublicId: string, f: ListFilters) {
+    const where: Prisma.TransactionWhereInput = {
+        account: { user: { publicId: userPublicId } },
+        ...(typeof f.accountId === "number" ? { accountId: f.accountId } : {}),
+        // no categoryId here — we want ALL categories for the current filters
+        ...(f.q ? { description: { contains: f.q, mode: "insensitive" } } : {}),
+        ...(f.from || f.to
+            ? {
+                date: {
+                    ...(f.from ? { gte: new Date(f.from) } : {}),
+                    ...(f.to ? { lte: new Date(f.to) } : {}),
+                },
+            }
+            : {}),
+    };
+
+    const rows = await prisma.transaction.groupBy({
+        by: ["categoryId"],
+        where,
+        _count: { _all: true },
+        _sum: { amount: true },
+        _min: { date: true },
+        _max: { date: true },
+    });
+
+    // decorate with category metadata (name/color/parent)
+    const ids = rows.map(r => r.categoryId).filter((v): v is number => v != null);
+    const cats = ids.length
+        ? await prisma.category.findMany({
+            where: { id: { in: ids } },
+            select: { id: true, name: true, color: true, parent: { select: { name: true, color: true } } },
+        })
+        : [];
+    const cmap = new Map(cats.map(c => [c.id, c]));
+
+    return {
+        groups: rows.map(r => {
+            const cat = r.categoryId != null ? cmap.get(r.categoryId) : undefined;
+            // coerce possible bigint fields to plain numbers
+            const sum = r._sum.amount != null ? Number(r._sum.amount) : 0;
+            const categoryId = r.categoryId == null ? null : Number(r.categoryId);
+
+            return {
+                categoryId,
+                count: r._count._all,
+                sum,
+                minDate: r._min.date?.toISOString() ?? null,
+                maxDate: r._max.date?.toISOString() ?? null,
+                categoryName: cat?.name ?? null,
+                parentName: cat?.parent?.name ?? null,
+                color: cat?.color ?? cat?.parent?.color ?? null,
+            };
+        }),
+    };
+}
 
 export async function create(userPublicId: string, dto: CreateInput) {
     // Verify account belongs to user
