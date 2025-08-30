@@ -1,11 +1,13 @@
 // controllers/transactions.controller.ts
 import type { RequestHandler } from "express";
 import * as svc from "../services/transactions.service";
+import { parseListFilters } from "../utils/parseListFilters";
 
 export const list: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-        const data = await svc.list(req.user.publicId, req.query as any);
+        const filters = parseListFilters(req.query);
+        const data = await svc.list(req.user.publicId, filters);
         res.json(data);
     } catch (e: any) {
         res.status(400).json({ message: e?.message ?? "Falha ao carregar transações." });
@@ -15,7 +17,8 @@ export const list: RequestHandler = async (req, res) => {
 export const groupByCategory: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-        const data = await svc.groupByCategory(req.user.publicId, req.query as any);
+        const filters = parseListFilters(req.query);
+        const data = await svc.groupByCategory(req.user.publicId, filters);
         res.json(data);
     } catch (e: any) {
         res.status(400).json({ message: e?.message ?? "Falha ao carregar transações." });

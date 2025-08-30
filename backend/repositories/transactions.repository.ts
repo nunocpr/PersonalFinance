@@ -70,10 +70,11 @@ export async function list(userPublicId: string, f: ListFilters) {
 }
 
 export async function groupByCategory(userPublicId: string, f: ListFilters) {
+    // Build WHERE the same way you do in list(), but without categoryId —
+    // we want ALL categories in the current filter context.
     const where: Prisma.TransactionWhereInput = {
         account: { user: { publicId: userPublicId } },
         ...(typeof f.accountId === "number" ? { accountId: f.accountId } : {}),
-        // no categoryId here — we want ALL categories for the current filters
         ...(f.q ? { description: { contains: f.q, mode: "insensitive" } } : {}),
         ...(f.from || f.to
             ? {
@@ -85,17 +86,46 @@ export async function groupByCategory(userPublicId: string, f: ListFilters) {
             : {}),
     };
 
-    const rows = await prisma.transaction.groupBy({
-        by: ["categoryId"],
+    // Keep sort semantics identical to list(); per-group items will respect this order.
+    const orderBy: Prisma.TransactionOrderByWithRelationInput[] =
+        f.sortBy === "amount"
+            ? [{ amount: f.sortDir === "asc" ? "asc" : "desc" }, { createdAt: "desc" }]
+            : [{ date: f.sortDir === "asc" ? "asc" : "desc" }, { createdAt: "desc" }];
+
+    // 1) Fetch ALL matching transactions (no pagination)
+    const rows = await prisma.transaction.findMany({
         where,
-        _count: { _all: true },
-        _sum: { amount: true },
-        _min: { date: true },
-        _max: { date: true },
+        orderBy,
+        select: {
+            id: true, date: true, amount: true, description: true, isSaving: true,
+            notes: true, accountId: true, categoryId: true, incomeSourceId: true,
+            createdAt: true, updatedAt: true,
+        },
     });
 
-    // decorate with category metadata (name/color/parent)
-    const ids = rows.map(r => r.categoryId).filter((v): v is number => v != null);
+    // 2) Group in-memory and compute aggregates
+    type Acc = {
+        items: ReturnType<typeof toDto>[];
+        count: number;
+        sum: number;
+        minDate: Date | null;
+        maxDate: Date | null;
+    };
+    const gmap = new Map<number | null, Acc>();
+
+    for (const r of rows) {
+        const key = r.categoryId ?? null;
+        const acc = gmap.get(key) ?? { items: [], count: 0, sum: 0, minDate: null, maxDate: null };
+        acc.items.push(toDto(r as Transaction));
+        acc.count++;
+        acc.sum += Number(r.amount); // amount is BigInt in DB; Number() OK for cents
+        acc.minDate = acc.minDate ? (r.date < acc.minDate ? r.date : acc.minDate) : r.date;
+        acc.maxDate = acc.maxDate ? (r.date > acc.maxDate ? r.date : acc.maxDate) : r.date;
+        gmap.set(key, acc);
+    }
+
+    // 3) Enrich with category metadata
+    const ids = [...gmap.keys()].filter((v): v is number => v != null);
     const cats = ids.length
         ? await prisma.category.findMany({
             where: { id: { in: ids } },
@@ -104,26 +134,27 @@ export async function groupByCategory(userPublicId: string, f: ListFilters) {
         : [];
     const cmap = new Map(cats.map(c => [c.id, c]));
 
-    return {
-        groups: rows.map(r => {
-            const cat = r.categoryId != null ? cmap.get(r.categoryId) : undefined;
-            // coerce possible bigint fields to plain numbers
-            const sum = r._sum.amount != null ? Number(r._sum.amount) : 0;
-            const categoryId = r.categoryId == null ? null : Number(r.categoryId);
+    // 4) Build DTO
+    const groups = [...gmap.entries()].map(([categoryId, acc]) => {
+        const cat = categoryId != null ? cmap.get(categoryId) : undefined;
+        return {
+            categoryId, // number | null
+            count: acc.count,
+            sum: acc.sum,
+            minDate: acc.minDate?.toISOString() ?? null,
+            maxDate: acc.maxDate?.toISOString() ?? null,
+            categoryName: cat?.name ?? null,
+            parentName: cat?.parent?.name ?? null,
+            color: cat?.color ?? cat?.parent?.color ?? null,
+            items: acc.items, // <-- ALL items for this category
+        };
+    });
 
-            return {
-                categoryId,
-                count: r._count._all,
-                sum,
-                minDate: r._min.date?.toISOString() ?? null,
-                maxDate: r._max.date?.toISOString() ?? null,
-                categoryName: cat?.name ?? null,
-                parentName: cat?.parent?.name ?? null,
-                color: cat?.color ?? cat?.parent?.color ?? null,
-            };
-        }),
-    };
+    // (Optional) Sort groups here if you want a default order; front-end can still re-sort.
+    // Example: sort by label on the client. We return as-is.
+    return { groups, total: rows.length };
 }
+
 
 export async function create(userPublicId: string, dto: CreateInput) {
     // Verify account belongs to user

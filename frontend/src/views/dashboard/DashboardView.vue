@@ -248,7 +248,7 @@ const donutOption = computed(() => {
             type: "pie",
             radius: ["50%", "70%"],
             avoidLabelOverlap: true,
-            label: { show: false },
+            label: { show: true },
             data
         }]
     };
@@ -303,11 +303,11 @@ function monthValueForSub(subId: number, key: string) {
         </section>
 
         <!-- Loading / error -->
-        <p v-if="loading" class="text-gray-600">A carregar…</p>
-        <p v-else-if="error" class="text-red-600">{{ error }}</p>
 
         <!-- Charts -->
-        <section v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-72">
+            <!-- <p v-if="loading" class="text-gray-600">A carregar…</p> -->
+            <!-- <p v-else-if="error" class="text-red-600">{{ error }}</p> -->
             <div class="border rounded bg-white p-3">
                 <h3 class="font-medium mb-2">Despesas por categoria ({{ mode === 'month' ? 'mês' : 'ano' }})</h3>
                 <VChart :option="barOption" autoresize style="height: 280px" />
