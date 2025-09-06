@@ -30,7 +30,7 @@ function getAccountTypeLabelPt(type?: string | null) {
     return ACCOUNT_TYPE_LABELS_PT[key] ?? (type ?? "");
 }
 
-/** NEW: live, computed balances */
+/** computed balances */
 const currentBalanceById = ref<Map<number, number>>(new Map());
 
 async function refreshCurrentBalance(accountId: number) {

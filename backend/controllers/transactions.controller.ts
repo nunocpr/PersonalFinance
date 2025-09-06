@@ -57,18 +57,6 @@ export const remove: RequestHandler = async (req, res) => {
     }
 };
 
-export const getBalance: RequestHandler = async (req, res) => {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const accountId = Number(req.params.accountId);
-    if (!Number.isFinite(accountId)) return res.status(400).json({ message: "Conta inválida." });
-    try {
-        const currentBalance = await svc.getCurrentBalance(req.user.publicId, accountId);
-        res.json({ accountId, currentBalance });
-    } catch (e: any) {
-        res.status(400).json({ message: e?.message ?? "Falha ao obter saldo." });
-    }
-};
-
 export const createTransfer: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try { res.status(201).json(await svc.createTransfer(req.user.publicId, req.body)); }

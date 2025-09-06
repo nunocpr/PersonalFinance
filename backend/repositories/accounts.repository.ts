@@ -74,14 +74,13 @@ export async function removeAccount(userPublicId: string, id: number) {
 export async function computeCurrentBalance(userPublicId: string, id: number): Promise<number> {
     const acc = await prisma.account.findFirst({
         where: { id, user: { publicId: userPublicId } },
-        select: { openingBalance: true, openingDate: true, id: true },
+        select: { openingBalance: true, openingDate: false, id: true },
     });
     if (!acc) throw new Error("Conta não encontrada.");
 
     const whereTx: Prisma.TransactionWhereInput = {
         accountId: id,
-        account: { user: { publicId: userPublicId } },
-        ...(acc.openingDate ? { date: { gte: acc.openingDate } } : {}),
+        account: { user: { publicId: userPublicId } }
     };
 
     const agg = await prisma.transaction.aggregate({

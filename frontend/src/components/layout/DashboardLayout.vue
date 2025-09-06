@@ -50,8 +50,6 @@ function toggleSidebar() {
 const initial = computed(() =>
     (user?.value?.name || user?.value?.email || "?").slice(0, 1).toUpperCase()
 );
-const displayName = computed(() => user?.value?.name || user?.value?.email || "");
-const firstName = computed(() => (displayName.value.split(" ")[0] || displayName.value));
 
 // --- user dropdown state
 const userMenuOpen = ref(false);

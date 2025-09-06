@@ -17,7 +17,8 @@ const emit = defineEmits<{
     (e: "save", payload: {
         name: string;
         type: string;
-        balance: number;
+        openingBalance: number;
+        openingDate: string | null;
         description: string | null;
     }): void;
 }>();
@@ -26,6 +27,7 @@ const form = reactive({
     name: "",
     type: "checking",
     balanceCents: 0,
+    openingDate: null as string | null,
     description: "" as string | null,
 });
 
@@ -35,7 +37,8 @@ watch(
         if (props.mode === "edit" && v) {
             form.name = v.name;
             form.type = v.type;
-            form.balanceCents = v.balance;
+            form.balanceCents = v.openingBalance;
+            form.openingDate = v.openingDate;
             form.description = v.description ?? "";
         } else if (props.mode === "create") {
             form.name = "";
@@ -53,7 +56,8 @@ function submit() {
     emit("save", {
         name: form.name.trim(),
         type: form.type,
-        balance: form.balanceCents,
+        openingBalance: form.balanceCents,
+        openingDate: form.openingDate,
         description: form.description?.trim() || null,
     });
 }
@@ -87,6 +91,11 @@ function submit() {
             <label class="block">
                 <div class="text-sm text-gray-600 mb-1">Saldo inicial</div>
                 <MoneyCentsInput v-model="form.balanceCents" aria-label="Saldo em euros" />
+            </label>
+
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Data de Criação</div>
+                <input v-model="form.openingDate" type="date" class="w-full border rounded px-3 py-2" />
             </label>
 
             <label class="block">

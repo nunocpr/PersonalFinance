@@ -6,7 +6,7 @@ import type { Account } from "@/types/accounts";
 import { formatCentsEUR } from "@/utils/money";
 import Button from "../ui/Button.vue";
 
-const { items, load, add, edit, remove, getAccountTypeLabelPt } = useAccounts();
+const { items, load, add, edit, remove, getAccountTypeLabelPt, currentBalanceById } = useAccounts();
 
 const show = ref(false);
 const mode = ref<"create" | "edit">("create");
@@ -37,6 +37,11 @@ async function onDelete(a: Account) {
         await remove(a.id);
     }
 }
+
+/* Current Balance */
+
+
+
 </script>
 
 <template>
@@ -61,10 +66,19 @@ async function onDelete(a: Account) {
                     </span>
 
                     <span v-if="a.description" class="text-gray-500 text-sm mt-3">{{ a.description }}</span>
+                    <span v-if="a.openingDate" class="text-gray-500 text-sm">Criada em: {{
+                        new Date(a.openingDate).toLocaleDateString('pt-PT') }}</span>
 
-                    <!-- Amount pinned to bottom of the top block -->
-                    <div class="text-2xl text-gray-700 mt-auto py-4">
-                        {{ formatCentsEUR(a.balance) }}
+                    <!-- Initial amount pinned to bottom of the top block -->
+                    <label class="pt-4 text-sm text-gray-500">Saldo Inicial</label>
+                    <div class="text-2xl text-gray-700 mt-auto pb-4">
+                        {{ formatCentsEUR(a.openingBalance) }}
+                    </div>
+
+                    <!-- Computed amount pinned to bottom of the top block -->
+                    <label class="pt-4 text-sm text-gray-500">Saldo Atual</label>
+                    <div class="text-2xl text-gray-700 mt-auto pb-4">
+                        {{ formatCentsEUR(currentBalanceById.get(a.id) || 0) }}
                     </div>
                 </div>
                 <!-- BUTTONS -->

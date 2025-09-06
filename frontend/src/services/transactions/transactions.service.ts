@@ -50,11 +50,6 @@ export const TransactionService = {
 
     /* ─────────────── transfers & balances ─────────────── */
 
-    async getBalance(accountId: number) {
-        const { data } = await client.get(`/transactions/balances/${accountId}`);
-        return data as { accountId: number; balance: number };
-    },
-
     async createTransfer(payload: {
         fromAccountId: number;
         toAccountId: number;

@@ -124,11 +124,11 @@ export const removeAccount: RequestHandler = async (req, res) => {
 export const getBalance: RequestHandler = async (req, res) => {
     try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid account id" });
-        const currentBalance = await service.getCurrentBalance(req.user.publicId, id);
+        const accountId = Number(req.params.id);
+        if (!Number.isInteger(accountId)) return res.status(400).json({ message: "Invalid account id" });
+        const currentBalance = await service.getCurrentBalance(req.user.publicId, accountId);
         // prefer explicit property name to avoid confusion with openingBalance
-        return res.json({ accountId: id, currentBalance });
+        return res.json({ accountId, currentBalance });
     } catch (e: any) {
         const status = /not found/i.test(String(e?.message)) ? 404 : 500;
         console.error("[accounts] current-balance error:", e);

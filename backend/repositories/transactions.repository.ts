@@ -287,31 +287,6 @@ export async function remove(userPublicId: string, id: string) {
     if (count === 0) throw new Error("Transação não encontrada.");
 }
 
-
-export async function getCurrentBalance(userPublicId: string, accountId: number) {
-    const acc = await prisma.account.findFirst({
-        where: { id: accountId, user: { publicId: userPublicId } },
-        select: { openingBalance: true, openingDate: true },
-    });
-    if (!acc) throw new Error("Conta inválida.");
-
-    const where: Prisma.TransactionWhereInput = {
-        accountId,
-        account: { user: { publicId: userPublicId } },
-        ...(acc.openingDate ? { date: { gte: acc.openingDate } } : {}),
-    };
-
-    const agg = await prisma.transaction.aggregate({
-        where,
-        _sum: { amount: true },
-    });
-
-    const opening = BigInt(acc.openingBalance ?? 0);
-    const delta = BigInt(agg._sum.amount ?? 0);
-
-    return Number(opening + delta);
-}
-
 export async function createTransfer(userPublicId: string, dto: TransferInput) {
     if (!Number.isInteger(dto.amount) || dto.amount <= 0) throw new Error("Valor inválido.");
     if (dto.fromAccountId === dto.toAccountId) throw new Error("As contas têm de ser diferentes.");
