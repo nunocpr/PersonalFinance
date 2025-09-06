@@ -50,8 +50,15 @@ const filters = computed(() => ({
     sortDir: sortDir.value,
 }));
 
-/* Force CategoryGroups remount to refresh after data changes */
-const groupsKey = ref(0);
+const groupsRef = ref<InstanceType<typeof CategoryGroups> | null>(null);
+
+async function reloadGroupsPreservingScroll() {
+    if (groupBy.value !== "category") return;
+    const y = window.scrollY;
+    await groupsRef.value?.reload?.();
+    await nextTick();
+    window.scrollTo({ top: y, left: 0 });
+}
 
 /* Scroll helper */
 async function withScroll<T>(fn: () => Promise<T>) {
@@ -66,7 +73,7 @@ function search() {
     const id = activeId.value;
     if (id == null) return;
     if (groupBy.value === "category") {
-        groupsKey.value++; // force refresh if user hits “Filtrar”
+        reloadGroupsPreservingScroll();
         return;
     }
     withScroll(() => load({ accountId: id, ...filters.value, page: 1 }));
@@ -85,7 +92,7 @@ watch([accountsLoaded, activeId, q, from, to, sortBy, sortDir, groupBy], () => {
         withScroll(() => load({ accountId: id, ...filters.value, page: 1 }));
     } else {
         // entering category mode -> refresh groups
-        groupsKey.value++;
+        reloadGroupsPreservingScroll();
     }
 }, { immediate: true });
 
@@ -106,7 +113,7 @@ async function onSave(payload: {
 }) {
     await add(payload as any);
     await refreshCurrentBalance(payload.accountId); // refresh computed balance for affected account
-    if (groupBy.value === "category") groupsKey.value++;
+    await reloadGroupsPreservingScroll();
 }
 
 function onEdit(t: any) { editTx.value = { ...t }; showEdit.value = true; }
@@ -127,7 +134,7 @@ async function onEditSave(payload: {
         await refreshCurrentBalance(payload.accountId);
     }
 
-    if (groupBy.value === "category") groupsKey.value++;
+    await reloadGroupsPreservingScroll();
 }
 
 /* Delete handler (refresh balance) */
@@ -135,7 +142,7 @@ async function onRemove(id: string) {
     const t = items.value.find(i => i.id === id);
     await remove(id);
     if (t?.accountId) await refreshCurrentBalance(t.accountId);
-    if (groupBy.value === "category") groupsKey.value++;
+    await reloadGroupsPreservingScroll();
 }
 
 /* Categories (labels/colors) */
@@ -143,18 +150,33 @@ const catStore = useCategories();
 const { roots, load: loadCats } = catStore;
 const showCatPicker = ref(false);
 const pickingTxId = ref<string | null>(null);
+const pickingCurrentCategoryId = ref<number | null>(null);
+
 const defaultSubForActive = computed(() => getDefaultForAccount(activeId.value ?? null));
 const displayNameById = computed(() => {
     const map = new Map<number, string>();
     for (const r of roots.value) for (const c of (r.children || [])) map.set(c.id, `${r.name} / ${c.name}`);
     return map;
 });
-function openPicker(id: string) { pickingTxId.value = id; showCatPicker.value = true; }
+
+function openPicker(arg: string | { id: string; categoryId: number | null }) {
+    if (typeof arg === "string") {
+        pickingTxId.value = arg;
+        pickingCurrentCategoryId.value =
+            (items.value.find(t => t.id === arg)?.categoryId ?? null);
+    } else {
+        pickingTxId.value = arg.id;
+        pickingCurrentCategoryId.value = arg.categoryId ?? null;
+    }
+    showCatPicker.value = true;
+}
+
 async function onPick(payload: { categoryId: number }) {
     if (pickingTxId.value) await setCategory(pickingTxId.value, payload.categoryId);
     showCatPicker.value = false;
-    if (groupBy.value === "category") groupsKey.value++;
+    await reloadGroupsPreservingScroll();
 }
+
 function onSetDefault(payload: { categoryId: number }) {
     if (activeId.value != null) setDefaultForAccount(activeId.value, payload.categoryId);
 }
@@ -244,13 +266,11 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
 /* Transfer handlers */
 async function onTransferCreated() {
     await refreshAllCurrentBalances(); // both accounts might be impacted
-    if (groupBy.value === "category") groupsKey.value++;
-    else search();
+    if (groupBy.value === "category") await reloadGroupsPreservingScroll(); else search();
 }
 async function onConverted() {
     await refreshAllCurrentBalances(); // both accounts might be impacted
-    if (groupBy.value === "category") groupsKey.value++;
-    else search();
+    if (groupBy.value === "category") await reloadGroupsPreservingScroll(); else search();
 }
 </script>
 
@@ -388,7 +408,7 @@ async function onConverted() {
 
                         <div class="whitespace-nowrap">
                             <span :class="t.amount < 0 ? 'text-red-600' : 'text-green-700'">{{ formatCentsEUR(t.amount)
-                                }}</span>
+                            }}</span>
                         </div>
 
                         <div class="text-gray-800 truncate">{{ t.description || "—" }}</div>
@@ -452,9 +472,9 @@ async function onConverted() {
 
                 <!-- 3) Category grouping (SERVER) -->
                 <template v-else-if="groupBy === 'category'">
-                    <CategoryGroups :key="groupsKey" :account-id="activeId || null" :filters="filters"
+                    <CategoryGroups ref="groupsRef" :account-id="activeId || null" :filters="filters"
                         :template-columns="templateColumns" :display-name-by-id="displayNameById"
-                        :child-color-by-id="childColorById" @edit="onEdit" @remove="onRemove" />
+                        :child-color-by-id="childColorById" @edit="onEdit" @remove="onRemove" @pick="openPicker" />
                 </template>
             </ul>
 
@@ -484,8 +504,8 @@ async function onConverted() {
         <TransactionsImportModal v-model:open="showImport" />
 
         <CategoryPickerModal v-model:open="showCatPicker" :account-id="activeId || null"
-            :current-category-id="(items.find(t => t.id === pickingTxId) || {}).categoryId ?? null"
-            :default-category-id="defaultSubForActive" @pick="onPick" @set-default="onSetDefault" />
+            :current-category-id="pickingCurrentCategoryId" :default-category-id="defaultSubForActive" @pick="onPick"
+            @set-default="onSetDefault" />
 
         <TransactionModal v-model:open="show" mode="create" @save="onSave" @created-transfer="onTransferCreated" />
 

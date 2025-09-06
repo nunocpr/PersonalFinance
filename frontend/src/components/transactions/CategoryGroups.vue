@@ -24,6 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     (e: "edit", t: any): void;
     (e: "remove", id: string): void;
+    (e: "pick", payload: { id: string; categoryId: number | null }): void;
 }>();
 
 type CategoryGroup = {
@@ -60,6 +61,8 @@ async function loadGroups() {
     }
     loading.value = true;
     error.value = null;
+    const prevOpen = new Set(openSet.value);
+
     try {
         const res = await TransactionService.groupByCategory({
             accountId: props.accountId,
@@ -68,9 +71,13 @@ async function loadGroups() {
         const arr: CategoryGroup[] = Array.isArray(res?.groups) ? res.groups as CategoryGroup[] : [];
         // sort alphabetically by label (tweak as you like)
         groups.value = arr.sort((a, b) => catLabel(a).localeCompare(catLabel(b), "pt-PT"));
-        console.log("GROUPS: ", groups)
+
         // reset accordion state
         openSet.value = new Set();
+
+        // preserve accordion state (remove keys that no longer exist)
+        const valid = new Set(arr.map(g => catKey(g.categoryId)));
+        openSet.value = new Set([...prevOpen].filter(k => valid.has(k)));
     } catch (e: any) {
         error.value = e?.message || "Falha ao carregar grupos.";
         groups.value = [];
@@ -91,6 +98,9 @@ function toggle(id: number | null) {
 
 /* Reload whenever account or filters change */
 watch(() => [props.accountId, props.filters], loadGroups, { immediate: true, deep: true });
+
+// allow parent to trigger a reload without remounting
+defineExpose({ reload: loadGroups });
 </script>
 
 <template>
@@ -123,7 +133,10 @@ watch(() => [props.accountId, props.filters], loadGroups, { immediate: true, dee
                             <div class="truncate flex items-center gap-2">
                                 <span class="inline-block w-2.5 h-2.5 rounded-full ring-1 ring-gray-300 shrink-0"
                                     :style="{ backgroundColor: childColorById.get(t.categoryId || 0) || 'transparent' }" />
-                                {{ displayNameById.get(t.categoryId || 0) || "—" }}
+                                <Button variant="ghost" size="xs" title="Definir categoria"
+                                    @click.stop="emit('pick', { id: t.id, categoryId: t.categoryId ?? null })">
+                                    {{ displayNameById.get(t.categoryId || 0) || "Definir categoria…" }}
+                                </Button>
                             </div>
 
                             <div class="whitespace-nowrap">

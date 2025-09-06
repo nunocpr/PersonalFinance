@@ -18,6 +18,8 @@ function translateType(type: string | undefined | null): string {
     return TYPE_LABELS_PT[key] ?? (type ?? "");
 }
 
+const collatorPt = new Intl.Collator("pt", { sensitivity: "base", numeric: true });
+
 const roots = ref<Category[]>([]);
 const loading = ref(false);
 const error = ref<string>("");
@@ -33,7 +35,7 @@ export function useCategories() {
             roots.value = (data ?? []).map((r: Category) => ({
                 ...r,
                 children: r.children ?? [],
-            }));
+            })).sort((a: any, b: any) => collatorPt.compare(a.name ?? "", b.name ?? ""));
         } catch (e: any) {
             // Treat empty tree responses as a valid empty state
             const status = e?.response?.status;

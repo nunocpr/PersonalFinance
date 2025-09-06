@@ -19,7 +19,7 @@ export interface CreateCategoryDto {
     parentId?: number | null;
     icon?: string | null;
     color?: string | null;
-    type?: CategoryKind; // só para raiz; filhos herdam cor se quiseres
+    type?: CategoryKind;
 }
 
 export interface UpdateCategoryDto {

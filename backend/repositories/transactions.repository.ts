@@ -70,8 +70,7 @@ export async function list(userPublicId: string, f: ListFilters) {
 }
 
 export async function groupByCategory(userPublicId: string, f: ListFilters) {
-    // Build WHERE the same way you do in list(), but without categoryId —
-    // we want ALL categories in the current filter context.
+    // Build WHERE the same way you do in list(), but without categoryId — we want ALL categories in the current filter context.
     const where: Prisma.TransactionWhereInput = {
         account: { user: { publicId: userPublicId } },
         ...(typeof f.accountId === "number" ? { accountId: f.accountId } : {}),
@@ -138,7 +137,7 @@ export async function groupByCategory(userPublicId: string, f: ListFilters) {
     const groups = [...gmap.entries()].map(([categoryId, acc]) => {
         const cat = categoryId != null ? cmap.get(categoryId) : undefined;
         return {
-            categoryId, // number | null
+            categoryId,
             count: acc.count,
             sum: acc.sum,
             minDate: acc.minDate?.toISOString() ?? null,
@@ -146,12 +145,10 @@ export async function groupByCategory(userPublicId: string, f: ListFilters) {
             categoryName: cat?.name ?? null,
             parentName: cat?.parent?.name ?? null,
             color: cat?.color ?? cat?.parent?.color ?? null,
-            items: acc.items, // <-- ALL items for this category
+            items: acc.items,
         };
     });
 
-    // (Optional) Sort groups here if you want a default order; front-end can still re-sort.
-    // Example: sort by label on the client. We return as-is.
     return { groups, total: rows.length };
 }
 

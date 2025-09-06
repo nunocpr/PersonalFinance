@@ -24,7 +24,6 @@ export const AccountService = {
     },
     async getCurrentBalance(accountId: number): Promise<number> {
         const { data } = await client.get<CurrentBalanceResponse>(`/accounts/${accountId}/current-balance`);
-        console.log('data:', data)
         return Number(data.currentBalance ?? 0);
     },
 };
