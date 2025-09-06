@@ -12,4 +12,10 @@ router.put("/:id", ctrl.update);
 router.delete("/:id", ctrl.remove);
 router.get("/group-by-category", ctrl.groupByCategory);
 
+router.get("/balances/:accountId", ctrl.getBalance);
+router.post("/transfers", ctrl.createTransfer);
+router.get("/transfers", ctrl.listTransfers);
+router.delete("/transfers/:transferId", ctrl.removeTransfer);
+router.post("/transfers/convert", ctrl.convertToTransfer);
+
 export default router;

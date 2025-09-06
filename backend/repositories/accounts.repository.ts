@@ -1,99 +1,95 @@
 // backend/repositories/accounts.repository.ts
 import prisma from "../config/prisma";
-import type { Account } from "../generated/prisma";
+import type { Prisma } from "../generated/prisma";
+import type { CreateInput, UpdateInput } from "../types/accounts";
+import { toDto } from "../types/accounts";
 
-export type CreateInput = {
-    name: string;
-    type: string;
-    balance?: number;            // assume cents or units (your choice)
-    description?: string | null;
-};
-
-export type UpdateInput = {
-    id: number;                  // REQUIRED for updates
-    name?: string;
-    type?: string;
-    balance?: number;
-    description?: string | null;
-};
-
-/** List all non-deleted accounts for a user (by publicId) */
-export async function findAllAccounts(userPublicId: string): Promise<Account[]> {
-    return prisma.account.findMany({
-        where: { isDeleted: false, user: { publicId: userPublicId } },
+/** List all accounts for a user */
+export async function findAllAccounts(userPublicId: string) {
+    const rows = await prisma.account.findMany({
+        where: { user: { publicId: userPublicId } },
         orderBy: { createdAt: "asc" },
     });
+    return rows.map(toDto);
 }
 
 /** Find one account (by user publicId + account id) */
-export async function findAccountById(
-    userPublicId: string,
-    id: number
-): Promise<Account | null> {
-    return prisma.account.findFirst({
-        where: { id, isDeleted: false, user: { publicId: userPublicId } },
+export async function findAccountById(userPublicId: string, id: number) {
+    const acc = await prisma.account.findFirst({
+        where: { id, user: { publicId: userPublicId } },
     });
+    return acc ? toDto(acc) : null;
 }
 
-/** Create account for a user (by publicId) */
-export async function createAccount(
-    userPublicId: string,
-    dto: CreateInput
-): Promise<Account> {
-    return prisma.account.create({
+/** Create account */
+export async function createAccount(userPublicId: string, dto: CreateInput) {
+    const user = await prisma.user.findFirst({
+        where: { publicId: userPublicId },
+        select: { id: true },
+    });
+    if (!user) throw new Error("Utilizador inválido.");
+
+    const created = await prisma.account.create({
         data: {
             name: dto.name,
             type: dto.type,
-            balance: BigInt(dto.balance ?? 0),
             description: dto.description ?? null,
-            user: { connect: { publicId: userPublicId } },
+            openingBalance: BigInt(dto.openingBalance ?? 0),
+            openingDate: dto.openingDate ? new Date(dto.openingDate) : null,
+            user: { connect: { id: user.id } },
         },
     });
+
+    return toDto(created);
 }
 
-/** Update account (scoped by userPublicId for safety) */
-export async function updateAccount(
-    userPublicId: string,
-    dto: UpdateInput
-): Promise<Account> {
-    const data: any = {};
+/** Update account */
+export async function updateAccount(userPublicId: string, dto: UpdateInput & { id: number }) {
+    const data: Prisma.AccountUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.type !== undefined) data.type = dto.type;
-    if (dto.balance !== undefined) data.balance = BigInt(dto.balance);
     if (dto.description !== undefined) data.description = dto.description;
+    if (dto.openingBalance !== undefined) data.openingBalance = BigInt(dto.openingBalance);
+    if (dto.openingDate !== undefined) data.openingDate = dto.openingDate ? new Date(dto.openingDate) : null;
 
     const { count } = await prisma.account.updateMany({
-        where: { id: dto.id, isDeleted: false, user: { publicId: userPublicId } },
+        where: { id: dto.id, user: { publicId: userPublicId } },
         data,
     });
-    if (count === 0) throw new Error("Account not found or not owned by user");
+    if (count === 0) throw new Error("Conta não encontrada.");
 
-    return prisma.account.findFirstOrThrow({
-        where: { id: dto.id, user: { publicId: userPublicId } },
-    });
+    const acc = await prisma.account.findUniqueOrThrow({ where: { id: dto.id } });
+    return toDto(acc);
 }
 
-/** Soft delete */
-export async function softDeleteAccount(
-    userPublicId: string,
-    id: number
-): Promise<void> {
-    const { count } = await prisma.account.updateMany({
-        where: { id, isDeleted: false, user: { publicId: userPublicId } },
-        data: { isDeleted: true, deletedAt: new Date() },
+/** Hard delete (simple & schema-agnostic). If you want soft-delete, switch to update + isDeleted flags. */
+export async function removeAccount(userPublicId: string, id: number) {
+    const { count } = await prisma.account.deleteMany({
+        where: { id, user: { publicId: userPublicId } },
     });
-    if (count === 0) throw new Error("Account not found or not owned by user");
+    if (count === 0) throw new Error("Conta não encontrada.");
 }
 
-/** Get balance (BigInt) */
-export async function getAccountBalance(
-    userPublicId: string,
-    id: number
-): Promise<bigint> {
+/** Compute current balance = openingBalance + SUM(transactions since openingDate, inclusive) */
+export async function computeCurrentBalance(userPublicId: string, id: number): Promise<number> {
     const acc = await prisma.account.findFirst({
-        where: { id, isDeleted: false, user: { publicId: userPublicId } },
-        select: { balance: true },
+        where: { id, user: { publicId: userPublicId } },
+        select: { openingBalance: true, openingDate: true, id: true },
     });
-    if (!acc) throw new Error("Account not found or not owned by user");
-    return acc.balance;
+    if (!acc) throw new Error("Conta não encontrada.");
+
+    const whereTx: Prisma.TransactionWhereInput = {
+        accountId: id,
+        account: { user: { publicId: userPublicId } },
+        ...(acc.openingDate ? { date: { gte: acc.openingDate } } : {}),
+    };
+
+    const agg = await prisma.transaction.aggregate({
+        where: whereTx,
+        _sum: { amount: true },
+    });
+
+    const opening = Number(acc.openingBalance ?? 0n);
+    const delta = Number(agg._sum.amount ?? 0n);
+    return opening + delta;
 }

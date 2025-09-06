@@ -44,3 +44,13 @@ export interface TxCreateDto {
 }
 
 export type TxUpdateDto = Partial<TxCreateDto>;
+
+
+export type TransferCreateDto = {
+    fromAccountId: number;
+    toAccountId: number;
+    amount: number;
+    date?: string;
+    description?: string | null;
+    notes?: string | null;
+};

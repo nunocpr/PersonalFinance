@@ -122,7 +122,7 @@ const maxW = {
             <div v-if="open" class="fixed inset-0 z-[9999] grid place-items-center bg-black/40" role="dialog"
                 aria-modal="true" :aria-labelledby="labelledby" @click.self="closeOnBackdrop ? close() : undefined">
                 <div ref="panelRef"
-                    :class="['bg-white rounded-xl w-full p-5 space-y-4 shadow-xl outline-none max-h-[90dvh] overflow-hidden', maxW]"
+                    :class="['bg-white rounded-xl w-full p-5 space-y-4 shadow-xl outline-none max-h-[90dvh] overflow-auto', maxW]"
                     tabindex="-1">
                     <header v-if="$slots.header" class="mb-1">
                         <slot name="header" />

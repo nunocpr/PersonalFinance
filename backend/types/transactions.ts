@@ -28,3 +28,13 @@ export type CreateInput = {
 };
 
 export type UpdateInput = Partial<CreateInput>;
+
+export type TransferInput = {
+    fromAccountId: number;
+    toAccountId: number;
+    amount: number;
+    date?: string;
+    description?: string | null;
+    notes?: string | null;
+};
+

@@ -1,6 +1,6 @@
 // src/services/accounts/accounts.service.ts
 import client from "@/services/api/client";
-import type { Account } from "@/types/accounts";
+import type { Account, CurrentBalanceResponse } from "@/types/accounts";
 
 export const AccountService = {
     async list(): Promise<Account[]> {
@@ -22,8 +22,8 @@ export const AccountService = {
     async delete(id: number): Promise<void> {
         await client.delete(`/accounts/${id}`);
     },
-    async getBalance(id: number): Promise<number> {
-        const { data } = await client.get<{ balance: number }>(`/accounts/${id}/balance`);
-        return data.balance;
+    async getCurrentBalance(accountId: number): Promise<number> {
+        const { data } = await client.get<CurrentBalanceResponse>(`/transactions/balances/${accountId}`);
+        return Number(data.currentBalance ?? 0);
     },
 };

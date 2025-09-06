@@ -42,7 +42,8 @@ model Account {
   id          Int       @id @default(autoincrement()) @map("account_id")
   name        String    @map("account_name") @db.VarChar(100)
   type        String    @map("account_type") @db.VarChar(50)
-  balance     BigInt    @default(0) @map("account_balance")
+  openingBalance BigInt   @default(0) @map("account_balance")
+  openingDate    DateTime? @map("account_opening_date") @db.Timestamptz(6)
   description String?   @map("account_description")
   isDeleted   Boolean   @default(false) @map("account_is_deleted")
   createdAt   DateTime  @default(now()) @map("account_created_at") @db.Timestamptz(6)
@@ -117,6 +118,9 @@ model Transaction {
   accountId      Int  @map("transaction_account_id")
   incomeSourceId Int? @map("transaction_income_source_id")
 
+  transferId String? @map("transaction_transfer_id") @db.Uuid
+
+
   createdAt DateTime @default(now()) @map("transaction_created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @map("transaction_updated_at") @db.Timestamptz(6)
 
@@ -124,6 +128,7 @@ model Transaction {
   category     Category?     @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
   incomeSource IncomeSource? @relation(fields: [incomeSourceId], references: [id], onUpdate: NoAction)
 
+  @@index([transferId])
   @@map("fin_transactions")
 }
 

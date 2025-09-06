@@ -1,11 +1,12 @@
 <!-- src/components/transactions/TransactionModal.vue -->
 <script setup lang="ts">
-import { reactive, watch, computed, onMounted } from "vue";
+import { reactive, watch, computed, onMounted, ref } from "vue";
 import { useAccounts } from "@/services/accounts/accounts.store";
 import { useCategories } from "@/services/categories/categories.store";
 import type { Category } from "@/types/categories";
 import MoneyCentsInput from "../inputs/MoneyCentsInput.vue";
 import BaseModal from "../ui/BaseModal.vue";
+import { TransactionService } from "@/services/transactions/transactions.service";
 
 type Mode = "create" | "edit";
 const props = defineProps<{
@@ -32,6 +33,10 @@ const emit = defineEmits<{
         description: string | null;
         notes?: string | null;
     }): void;
+
+    // NEW: when the modal performs transfer actions itself
+    (e: "created-transfer"): void;
+    (e: "converted-transfer"): void;
 }>();
 
 /* Accounts & Categories */
@@ -42,9 +47,7 @@ const { roots, load: loadCategories, loading: catLoading } = useCategories();
 const childCategories = computed<{ id: number; label: string; parent: Category }[]>(() => {
     const out: any[] = [];
     for (const r of roots.value || []) {
-        for (const c of (r.children || [])) {
-            out.push({ id: c.id, label: `${r.name} • ${c.name}`, parent: r });
-        }
+        for (const c of (r.children || [])) out.push({ id: c.id, label: `${r.name} • ${c.name}`, parent: r });
     }
     return out.sort((a, b) => a.label.localeCompare(b.label, "pt-PT"));
 });
@@ -61,13 +64,17 @@ const form = reactive({
 
 /* Properly map category select ('' ⇄ null, "123" ⇄ 123) */
 const categoryModel = computed<string>({
-    get() {
-        return form.categoryId == null ? "" : String(form.categoryId);
-    },
-    set(v: string) {
-        form.categoryId = v === "" ? null : Number(v);
-    },
+    get() { return form.categoryId == null ? "" : String(form.categoryId); },
+    set(v: string) { form.categoryId = v === "" ? null : Number(v); },
 });
+
+/* TRANSFER UI */
+const isTransfer = ref(false);
+const toAccountId = ref<number | null>(null);
+
+const otherAccounts = computed(() =>
+    (accounts.value || []).filter(a => a.id !== form.accountId)
+);
 
 function reset() {
     form.accountId = activeId.value ?? (accounts.value[0]?.id ?? 0);
@@ -76,6 +83,8 @@ function reset() {
     form.categoryId = null;
     form.description = "";
     form.notes = "";
+    isTransfer.value = false;
+    toAccountId.value = null;
 }
 
 /* Open → prefill (and lazy-load lists) */
@@ -93,6 +102,8 @@ watch(
             form.categoryId = props.value.categoryId ?? null;
             form.description = (props.value.description ?? "") || "";
             form.notes = (props.value.notes ?? "") || "";
+            isTransfer.value = false;
+            toAccountId.value = null;
         } else {
             reset();
         }
@@ -109,11 +120,49 @@ function close() {
     emit("update:open", false);
 }
 
-function save() {
+async function save() {
     // Basic guardrails
     if (!form.accountId || !form.date) return;
     if (!Number.isFinite(form.amountCents) || form.amountCents === 0) return;
 
+    // If user marked as transfer, we handle it here using the service.
+    if (isTransfer.value) {
+        if (!toAccountId.value) return; // must select destination
+
+        const abs = Math.abs(form.amountCents);
+
+        if (props.mode === "create") {
+            await TransactionService.createTransfer({
+                fromAccountId: form.accountId,
+                toAccountId: toAccountId.value,
+                amount: abs,
+                date: form.date,
+                description: form.description.trim() ? form.description.trim() : null,
+                notes: form.notes.trim() ? form.notes.trim() : null,
+            });
+            emit("created-transfer");
+            close();
+            reset();
+            return;
+        }
+
+        if (props.mode === "edit" && props.value?.id) {
+            await TransactionService.convertToTransfer({
+                txId: props.value.id,
+                toAccountId: toAccountId.value,
+                amount: abs,
+                date: form.date,
+                description: form.description.trim() ? form.description.trim() : null,
+                notes: form.notes.trim() ? form.notes.trim() : null,
+            });
+            emit("converted-transfer");
+            close();
+            reset();
+            return;
+        }
+    }
+
+    // Normal non-transfer save: let parent perform add/update
     emit("save", {
         accountId: form.accountId,
         date: form.date,
@@ -155,12 +204,34 @@ function save() {
                 <MoneyCentsInput v-model="form.amountCents" />
             </label>
 
+            <!-- Transfer toggle + destination account -->
+            <div class="mt-2 rounded border p-2 bg-gray-50">
+                <label class="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" v-model="isTransfer" />
+                    <span>Esta transação é uma <strong>transferência</strong></span>
+                </label>
+
+                <div v-if="isTransfer" class="mt-2">
+                    <label class="block">
+                        <div class="text-sm text-gray-600 mb-1">Conta destino</div>
+                        <select v-model="toAccountId" class="w-full border rounded px-3 py-2">
+                            <option :value="null" disabled>— selecione —</option>
+                            <option v-for="a in otherAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Ao guardar, será criada automaticamente a perna na conta destino (ou esta transação será
+                        convertida).
+                    </p>
+                </div>
+            </div>
+
+            <!-- Category disabled when transfer -->
             <label class="block">
                 <div class="text-sm text-gray-600 mb-1">
                     Categoria <span class="text-xs text-gray-500">(subcategorias)</span>
                 </div>
-                <!-- fixed: no .number; use categoryModel to preserve null -->
-                <select v-model="categoryModel" class="w-full border rounded px-3 py-2">
+                <select v-model="categoryModel" class="w-full border rounded px-3 py-2" :disabled="isTransfer">
                     <option value="">— Sem categoria —</option>
                     <option v-for="opt in childCategories" :key="opt.id" :value="String(opt.id)">
                         {{ opt.label }}
@@ -176,7 +247,6 @@ function save() {
                 <input v-model="form.description" class="w-full border rounded px-3 py-2" />
             </label>
 
-            <!-- Notes -->
             <label class="block">
                 <div class="text-sm text-gray-600 mb-1">
                     Notas <span class="text-xs text-gray-500">(opcional)</span>

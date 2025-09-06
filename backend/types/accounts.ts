@@ -1,6 +1,4 @@
-// types/accounts.ts
-
-import { centsToMoney } from "../utils/money";
+// backend/types/accounts.ts
 
 export type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'other';
 
@@ -8,28 +6,36 @@ export interface AccountDto {
     id: number;
     name: string;
     type: AccountType;
-    balance: number;
+    openingBalance: number;
+    openingDate: string | null;
     description: string | null;
-    createdAt: string | Date;
-    updatedAt: string | Date;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface CreateInput {
-    id: number;
     name: string;
     type: AccountType;
-    balance?: number;            // cents (or units) — your choice
+    openingBalance?: number;
+    openingDate?: string | null;
     description?: string | null;
 }
 
-export type UpdateInput = Partial<CreateInput>;
-
+export interface UpdateInput {
+    id: number;
+    name?: string;
+    type?: AccountType;
+    openingBalance?: number;
+    openingDate?: string | null;
+    description?: string | null;
+}
 
 export const toDto = (a: any): AccountDto => ({
     id: a.id,
     name: a.name,
     type: a.type,
-    balance: Number(a.balance),
+    openingBalance: Number(a.openingBalance ?? 0),
+    openingDate: a.openingDate ? new Date(a.openingDate).toISOString() : null,
     description: a.description ?? null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),

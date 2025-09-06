@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// TransactionsView.vue
+
 import { onMounted, ref, computed, onBeforeUnmount, watch, nextTick } from "vue";
 import { useTransactions } from "@/services/transactions/transactions.store";
 import { useAccounts } from "@/services/accounts/accounts.store";
@@ -9,8 +11,10 @@ import { getDefaultForAccount, setDefaultForAccount } from "@/services/transacti
 import { useCategories } from "@/services/categories/categories.store";
 import TransactionsImportModal from "@/components/transactions/TransactionsImportModal.vue";
 import Button from "@/components/ui/Button.vue";
-import { Pencil, Trash2 } from "lucide-vue-next";
-import CategoryGroups from "@/components/transactions/CategoryGroups.vue"; // <— NEW
+import { FolderSymlink, Pencil, Trash2 } from "lucide-vue-next";
+import CategoryGroups from "@/components/transactions/CategoryGroups.vue";
+import TransferModal from "@/components/transactions/TransferModal.vue";
+import ConvertToTransferModal from "@/components/transactions/ConvertToTransferModal.vue";
 
 /* Stores */
 const tx = useTransactions();
@@ -23,6 +27,8 @@ const {
 
 const accounts = accountsStore.items;
 const activeId = accountsStore.activeId;
+const refreshCurrentBalance = accountsStore.refreshCurrentBalance;
+const refreshAllCurrentBalances = accountsStore.refreshAllCurrentBalances;
 const accountsLoaded = accountsStore.loaded;
 const loadAccounts = accountsStore.load;
 
@@ -35,7 +41,7 @@ const sortDir = ref<"asc" | "desc">("desc");
 type GroupKind = "none" | "category" | "month";
 const groupBy = ref<GroupKind>("none");
 
-/* Handy filters object for child component */
+/* Handy filters object (passed to CategoryGroups) */
 const filters = computed(() => ({
     q: q.value || undefined,
     from: from.value || undefined,
@@ -43,6 +49,9 @@ const filters = computed(() => ({
     sortBy: sortBy.value,
     sortDir: sortDir.value,
 }));
+
+/* Force CategoryGroups remount to refresh after data changes */
+const groupsKey = ref(0);
 
 /* Scroll helper */
 async function withScroll<T>(fn: () => Promise<T>) {
@@ -57,7 +66,7 @@ function search() {
     const id = activeId.value;
     if (id == null) return;
     if (groupBy.value === "category") {
-        // nothing to do here; CategoryGroups refetches on filters change
+        groupsKey.value++; // force refresh if user hits “Filtrar”
         return;
     }
     withScroll(() => load({ accountId: id, ...filters.value, page: 1 }));
@@ -74,6 +83,9 @@ watch([accountsLoaded, activeId, q, from, to, sortBy, sortDir, groupBy], () => {
     }
     if (groupBy.value !== "category") {
         withScroll(() => load({ accountId: id, ...filters.value, page: 1 }));
+    } else {
+        // entering category mode -> refresh groups
+        groupsKey.value++;
     }
 }, { immediate: true });
 
@@ -83,21 +95,47 @@ const showImport = ref(false);
 const showEdit = ref(false);
 const editTx = ref<any | null>(null);
 
+/* Transfers modals */
+const showTransfer = ref(false);
+const showConvert = ref(false);
+const convertTx = ref<any | null>(null);
+
 async function onSave(payload: {
     accountId: number; date: string; amount: number;
     categoryId: number | null; description: string | null; notes?: string | null;
 }) {
     await add(payload as any);
+    await refreshCurrentBalance(payload.accountId); // refresh computed balance for affected account
+    if (groupBy.value === "category") groupsKey.value++;
 }
+
 function onEdit(t: any) { editTx.value = { ...t }; showEdit.value = true; }
+
 async function onEditSave(payload: {
     id?: string; accountId?: number; date?: string; amount?: number;
     categoryId?: number | null; description?: string | null; notes?: string | null;
 }) {
     const id = editTx.value?.id;
+    const beforeAccId: number | undefined = editTx.value?.accountId;
     const anyTx = tx as any;
     if (id && typeof anyTx.update === "function") await anyTx.update(id, payload);
     showEdit.value = false; editTx.value = null;
+
+    // refresh balances: previous account and possibly new one
+    if (typeof beforeAccId === "number") await refreshCurrentBalance(beforeAccId);
+    if (typeof payload.accountId === "number" && payload.accountId !== beforeAccId) {
+        await refreshCurrentBalance(payload.accountId);
+    }
+
+    if (groupBy.value === "category") groupsKey.value++;
+}
+
+/* Delete handler (refresh balance) */
+async function onRemove(id: string) {
+    const t = items.value.find(i => i.id === id);
+    await remove(id);
+    if (t?.accountId) await refreshCurrentBalance(t.accountId);
+    if (groupBy.value === "category") groupsKey.value++;
 }
 
 /* Categories (labels/colors) */
@@ -112,8 +150,14 @@ const displayNameById = computed(() => {
     return map;
 });
 function openPicker(id: string) { pickingTxId.value = id; showCatPicker.value = true; }
-async function onPick(payload: { categoryId: number }) { if (pickingTxId.value) await setCategory(pickingTxId.value, payload.categoryId); showCatPicker.value = false; }
-function onSetDefault(payload: { categoryId: number }) { if (activeId.value != null) setDefaultForAccount(activeId.value, payload.categoryId); }
+async function onPick(payload: { categoryId: number }) {
+    if (pickingTxId.value) await setCategory(pickingTxId.value, payload.categoryId);
+    showCatPicker.value = false;
+    if (groupBy.value === "category") groupsKey.value++;
+}
+function onSetDefault(payload: { categoryId: number }) {
+    if (activeId.value != null) setDefaultForAccount(activeId.value, payload.categoryId);
+}
 const childColorById = computed(() => {
     const map = new Map<number, string | null>();
     for (const r of roots.value) {
@@ -125,7 +169,12 @@ const childColorById = computed(() => {
 
 /* Lifecycle */
 const hasAccounts = computed(() => Array.isArray(accounts.value) && accounts.value.length > 0);
-onMounted(async () => { await loadAccounts(); await loadCats(); });
+onMounted(async () => {
+    await loadAccounts();
+    await loadCats();
+    // ensure up-to-date computed balances (picker header and totals rely on them)
+    await refreshAllCurrentBalances();
+});
 
 /* Pagination (main table only) */
 const start = computed(() => (total.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1));
@@ -158,7 +207,7 @@ const groupedMonth = computed(() => {
         .sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
 });
 
-/* Column resizing (unchanged) */
+/* Column resizing */
 const W_KEY = "pf_tx_col_widths_v2";
 const MIN = [96, 180, 90, 160, 80, 80] as const;
 const widths = ref<number[]>(
@@ -191,6 +240,18 @@ function onMove(e: PointerEvent) {
 }
 function onUp() { drag.value = null; window.removeEventListener("pointermove", onMove); saveWidths(); }
 onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
+
+/* Transfer handlers */
+async function onTransferCreated() {
+    await refreshAllCurrentBalances(); // both accounts might be impacted
+    if (groupBy.value === "category") groupsKey.value++;
+    else search();
+}
+async function onConverted() {
+    await refreshAllCurrentBalances(); // both accounts might be impacted
+    if (groupBy.value === "category") groupsKey.value++;
+    else search();
+}
 </script>
 
 <template>
@@ -216,9 +277,17 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
 
             <div class="flex gap-2">
                 <Button variant="primary" size="sm" :disabled="!hasAccounts" title="Importar CSV"
-                    @click="showImport = true">Importar</Button>
+                    @click="showImport = true">
+                    Importar
+                </Button>
                 <Button variant="primary" size="sm" :disabled="!hasAccounts" title="Adicionar Transacção"
-                    @click="show = true">Adicionar</Button>
+                    @click="show = true">
+                    Adicionar
+                </Button>
+                <Button variant="primary" size="sm" :disabled="!hasAccounts" title="Transferir"
+                    @click="showTransfer = true">
+                    Transferir
+                </Button>
             </div>
         </div>
 
@@ -232,15 +301,20 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
                 <div class="h-full w-1/3 animate-[txLoading_1.1s_linear_infinite] bg-primary" />
             </div>
 
-            <!-- Header controls (hide list pagination when category mode) -->
-            <div class="flex flex-wrap items-center justify-between gap-6 border-b" v-if="total">
+            <!-- Header controls: ALWAYS visible; pagination hidden in category mode -->
+            <div class="flex flex-wrap items-center justify-between gap-6 border-b">
                 <div class="px-3 py-2 text-sm text-gray-600">
-                    Total de {{ total }} transacções
-                    <div class="flex items-center gap-2 mt-1">
-                        <Button variant="ghost" size="xs" :disabled="!hasPrev" @click="goPrev">Anterior</Button>
-                        <span class="text-sm tabular-nums">{{ page }} / {{ totalPages }}</span>
-                        <Button variant="ghost" size="xs" :disabled="!hasNext" @click="goNext">Seguinte</Button>
-                    </div>
+                    <template v-if="groupBy !== 'category'">
+                        Total de {{ total }} transacções
+                        <div class="flex items-center gap-2 mt-1">
+                            <Button variant="ghost" size="xs" :disabled="!hasPrev" @click="goPrev">Anterior</Button>
+                            <span class="text-sm tabular-nums">{{ page }} / {{ totalPages }}</span>
+                            <Button variant="ghost" size="xs" :disabled="!hasNext" @click="goNext">Seguinte</Button>
+                        </div>
+                    </template>
+                    <template v-else>
+                        Agrupado por categoria
+                    </template>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-6 px-3 py-2">
@@ -279,27 +353,22 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
                         Data <span class="resizer" title="Ajustar largura"
                             @pointerdown="(e) => startResize(0, e as PointerEvent)" />
                     </div>
-
                     <div role="columnheader" class="relative">
                         Categoria <span class="resizer" title="Ajustar largura"
                             @pointerdown="(e) => startResize(1, e as PointerEvent)" />
                     </div>
-
                     <div role="columnheader" class="relative">
                         Valor <span class="resizer" title="Ajustar largura"
                             @pointerdown="(e) => startResize(2, e as PointerEvent)" />
                     </div>
-
                     <div role="columnheader" class="relative">
                         Descrição <span class="resizer" title="Ajustar largura"
                             @pointerdown="(e) => startResize(3, e as PointerEvent, true)" />
                     </div>
-
                     <div role="columnheader" class="relative">
                         Notas <span class="resizer" title="Ajustar largura"
                             @pointerdown="(e) => startResize(4, e as PointerEvent, true)" />
                     </div>
-
                     <div role="columnheader" class="relative">Ações</div>
                 </li>
 
@@ -319,7 +388,7 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
 
                         <div class="whitespace-nowrap">
                             <span :class="t.amount < 0 ? 'text-red-600' : 'text-green-700'">{{ formatCentsEUR(t.amount)
-                            }}</span>
+                                }}</span>
                         </div>
 
                         <div class="text-gray-800 truncate">{{ t.description || "—" }}</div>
@@ -329,7 +398,11 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
                             <Button variant="ghost" size="xs" title="Editar" @click="onEdit(t)">
                                 <Pencil class="w-4 h-4" />
                             </Button>
-                            <Button variant="danger" size="xs" title="Eliminar" @click="remove(t.id)">
+                            <Button variant="ghost" size="xs" title="Marcar transf."
+                                @click="convertTx = t; showConvert = true">
+                                <FolderSymlink class="w-4 h-4" />
+                            </Button>
+                            <Button variant="danger" size="xs" title="Eliminar" @click="onRemove(t.id)">
                                 <Trash2 class="w-4 h-4" />
                             </Button>
                         </div>
@@ -342,25 +415,34 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
                 <template v-else-if="groupBy === 'month' && groupedMonth">
                     <template v-for="g in groupedMonth" :key="g.key">
                         <li class="px-3 py-2 bg-gray-50 text-sm font-medium flex items-center gap-2">{{ g.label }}</li>
+
                         <li v-for="t in g.rows" :key="t.id" role="row" class="grid gap-x-4 px-3 py-3"
                             :style="{ gridTemplateColumns: templateColumns }">
                             <div class="text-gray-700 whitespace-nowrap">{{ t.date?.slice(0, 10) }}</div>
+
                             <div class="truncate flex items-center gap-2">
                                 <span class="inline-block w-2.5 h-2.5 rounded-full ring-1 ring-gray-300 shrink-0"
                                     :style="{ backgroundColor: childColorById.get(t.categoryId || 0) || 'transparent' }" />
                                 {{ displayNameById.get(t.categoryId || 0) || "—" }}
                             </div>
+
                             <div class="whitespace-nowrap">
                                 <span :class="t.amount < 0 ? 'text-red-600' : 'text-green-700'">{{
                                     formatCentsEUR(t.amount) }}</span>
                             </div>
+
                             <div class="text-gray-800 truncate">{{ t.description || "—" }}</div>
                             <div class="text-gray-700 truncate">{{ t.notes || "—" }}</div>
+
                             <div class="whitespace-nowrap flex items-center gap-2">
                                 <Button variant="ghost" size="xs" title="Editar" @click="onEdit(t)">
                                     <Pencil class="w-4 h-4" />
                                 </Button>
-                                <Button variant="danger" size="xs" title="Eliminar" @click="remove(t.id)">
+                                <Button variant="ghost" size="xs" title="Marcar transf."
+                                    @click="convertTx = t; showConvert = true">
+                                    <FolderSymlink class="w-4 h-4" />
+                                </Button>
+                                <Button variant="danger" size="xs" title="Eliminar" @click="onRemove(t.id)">
                                     <Trash2 class="w-4 h-4" />
                                 </Button>
                             </div>
@@ -370,9 +452,9 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
 
                 <!-- 3) Category grouping (SERVER) -->
                 <template v-else-if="groupBy === 'category'">
-                    <CategoryGroups :account-id="activeId || null" :filters="filters"
+                    <CategoryGroups :key="groupsKey" :account-id="activeId || null" :filters="filters"
                         :template-columns="templateColumns" :display-name-by-id="displayNameById"
-                        :child-color-by-id="childColorById" @edit="onEdit" @remove="remove" />
+                        :child-color-by-id="childColorById" @edit="onEdit" @remove="onRemove" />
                 </template>
             </ul>
 
@@ -400,11 +482,18 @@ onBeforeUnmount(() => { window.removeEventListener("pointermove", onMove); });
         </div>
 
         <TransactionsImportModal v-model:open="showImport" />
+
         <CategoryPickerModal v-model:open="showCatPicker" :account-id="activeId || null"
             :current-category-id="(items.find(t => t.id === pickingTxId) || {}).categoryId ?? null"
             :default-category-id="defaultSubForActive" @pick="onPick" @set-default="onSetDefault" />
-        <TransactionModal v-model:open="show" mode="create" @save="onSave" />
-        <TransactionModal v-model:open="showEdit" mode="edit" :value="editTx" @save="onEditSave" />
+
+        <TransactionModal v-model:open="show" mode="create" @save="onSave" @created-transfer="onTransferCreated" />
+
+        <TransactionModal v-model:open="showEdit" mode="edit" :value="editTx" @save="onEditSave"
+            @converted-transfer="onConverted" />
+
+        <TransferModal v-model:open="showTransfer" @created="onTransferCreated" />
+        <ConvertToTransferModal v-model:open="showConvert" :tx="convertTx" @converted="onConverted" />
     </div>
 </template>
 

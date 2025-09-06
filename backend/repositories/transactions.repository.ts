@@ -1,9 +1,10 @@
 // repositories/transactions.repository.ts
 import prisma from "../config/prisma";
 import type { Transaction, TransactionKind } from "../generated/prisma";
-import type { ListFilters, CreateInput, UpdateInput } from "../types/transactions";
+import type { ListFilters, CreateInput, UpdateInput, TransferInput } from "../types/transactions";
 import type { Prisma } from "../generated/prisma";
 import { matchRule, normalizeAmountForKind } from "../utils/ruleMatcher";
+import { randomUUID } from "crypto";
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
@@ -24,7 +25,6 @@ export function toDto(t: Transaction) {
     };
 }
 
-/** Ownership is enforced by joining through relations on WHERE. */
 export async function list(userPublicId: string, f: ListFilters) {
     const page = clamp(Number(f.page || 1), 1, 10_000);
     const pageSize = clamp(Number(f.pageSize || 20), 1, 100);
@@ -155,13 +155,13 @@ export async function groupByCategory(userPublicId: string, f: ListFilters) {
     return { groups, total: rows.length };
 }
 
-
 export async function create(userPublicId: string, dto: CreateInput) {
     // Verify account belongs to user
     const acc = await prisma.account.findFirst({
-        where: { id: dto.accountId, user: { publicId: userPublicId }, isDeleted: false },
+        where: { id: dto.accountId, user: { publicId: userPublicId } },
         select: { id: true },
     });
+
     if (!acc) throw new Error("Conta inválida.");
 
     // Optional category ownership check if provided
@@ -223,7 +223,7 @@ export async function update(userPublicId: string, id: string, patch: UpdateInpu
     // account ownership check (if moving transaction)
     if (patch.accountId !== undefined) {
         const acc = await prisma.account.findFirst({
-            where: { id: patch.accountId, user: { publicId: userPublicId }, isDeleted: false },
+            where: { id: patch.accountId, user: { publicId: userPublicId } },
             select: { id: true },
         });
         if (!acc) throw new Error("Conta inválida.");
@@ -280,10 +280,168 @@ export async function update(userPublicId: string, id: string, patch: UpdateInpu
     return toDto(t);
 }
 
-
 export async function remove(userPublicId: string, id: string) {
     const { count } = await prisma.transaction.deleteMany({
         where: { id, account: { user: { publicId: userPublicId } } },
     });
     if (count === 0) throw new Error("Transação não encontrada.");
+}
+
+
+export async function getCurrentBalance(userPublicId: string, accountId: number) {
+    const acc = await prisma.account.findFirst({
+        where: { id: accountId, user: { publicId: userPublicId } },
+        select: { openingBalance: true, openingDate: true },
+    });
+    if (!acc) throw new Error("Conta inválida.");
+
+    const where: Prisma.TransactionWhereInput = {
+        accountId,
+        account: { user: { publicId: userPublicId } },
+        ...(acc.openingDate ? { date: { gte: acc.openingDate } } : {}),
+    };
+
+    const agg = await prisma.transaction.aggregate({
+        where,
+        _sum: { amount: true },
+    });
+
+    const opening = BigInt(acc.openingBalance ?? 0);
+    const delta = BigInt(agg._sum.amount ?? 0);
+
+    return Number(opening + delta);
+}
+
+export async function createTransfer(userPublicId: string, dto: TransferInput) {
+    if (!Number.isInteger(dto.amount) || dto.amount <= 0) throw new Error("Valor inválido.");
+    if (dto.fromAccountId === dto.toAccountId) throw new Error("As contas têm de ser diferentes.");
+
+    // ownership checks
+    const [fromAcc, toAcc] = await Promise.all([
+        prisma.account.findFirst({ where: { id: dto.fromAccountId, user: { publicId: userPublicId } }, select: { id: true } }),
+        prisma.account.findFirst({ where: { id: dto.toAccountId, user: { publicId: userPublicId } }, select: { id: true } }),
+    ]);
+    if (!fromAcc || !toAcc) throw new Error("Conta inválida.");
+
+    const date = dto.date ? new Date(dto.date) : new Date();
+    const transferId = randomUUID();
+    const description = dto.description ?? "Transferência";
+    const notes = dto.notes ?? null;
+
+    const [debit, credit] = await prisma.$transaction(async (px) => {
+        const outTx = await px.transaction.create({
+            data: {
+                date,
+                amount: BigInt(-Math.abs(dto.amount)),
+                kind: "DEBIT",
+                description,
+                isSaving: false,
+                notes,
+                accountId: dto.fromAccountId,
+                transferId,
+                // categoryId: optionally set a "Transfer" category you may create later
+            },
+        });
+        const inTx = await px.transaction.create({
+            data: {
+                date,
+                amount: BigInt(Math.abs(dto.amount)),
+                kind: "CREDIT",
+                description,
+                isSaving: false,
+                notes,
+                accountId: dto.toAccountId,
+                transferId,
+            },
+        });
+        return [outTx, inTx];
+    });
+
+    return { out: toDto(debit), in: toDto(credit), transferId };
+}
+
+export async function removeTransfer(userPublicId: string, transferId: string) {
+    const { count } = await prisma.transaction.deleteMany({
+        where: { transferId, account: { user: { publicId: userPublicId } } },
+    });
+    if (count === 0) throw new Error("Transferência não encontrada.");
+}
+
+export async function listTransfers(userPublicId: string, accountId?: number) {
+    const where: Prisma.TransactionWhereInput = {
+        transferId: { not: null },
+        account: { user: { publicId: userPublicId } },
+        ...(typeof accountId === "number" ? { accountId } : {}),
+    };
+    const rows = await prisma.transaction.findMany({
+        where,
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    });
+    return rows.map(toDto);
+}
+
+export async function convertToTransfer(
+    userPublicId: string,
+    dto: {
+        txId: string;
+        toAccountId: number;
+        amount?: number;          // cents, positive override (optional)
+        date?: string | Date;     // optional override
+        description?: string | null;
+        notes?: string | null;
+    }
+) {
+    // Load tx & validate ownership
+    const srcTx = await prisma.transaction.findFirst({
+        where: { id: dto.txId, account: { user: { publicId: userPublicId } } },
+        select: { id: true, date: true, amount: true, kind: true, accountId: true, description: true, notes: true },
+    });
+    if (!srcTx) throw new Error("Transação não encontrada.");
+
+    // Validate destination account ownership
+    const dstAcc = await prisma.account.findFirst({
+        where: { id: dto.toAccountId, user: { publicId: userPublicId }, isDeleted: false },
+        select: { id: true },
+    });
+    if (!dstAcc) throw new Error("Conta destino inválida.");
+    if (dstAcc.id === srcTx.accountId) throw new Error("Conta destino não pode ser igual à origem.");
+
+    // Final values
+    const amount = dto.amount != null ? Math.abs(dto.amount) : Math.abs(Number(srcTx.amount));
+    if (!Number.isInteger(amount) || amount <= 0) throw new Error("Valor inválido.");
+    const when = dto.date ? new Date(dto.date) : srcTx.date;
+    const description = dto.description ?? srcTx.description ?? "Transferência";
+    const notes = dto.notes ?? srcTx.notes ?? null;
+    const transferId = randomUUID();
+
+    // Counter-leg kind/sign (opposite of source money direction)
+    const counterKind = srcTx.kind === "DEBIT" ? "CREDIT" : "DEBIT";
+    const counterAmount = counterKind === "CREDIT" ? BigInt(amount) : BigInt(-amount);
+
+    const [updatedSrc, dstTx] = await prisma.$transaction([
+        // 1) mark existing tx with transferId (leave original sign/kind as-is)
+        prisma.transaction.update({
+            where: { id: srcTx.id },
+            data: { transferId, date: when, description, notes },
+        }),
+        // 2) create the counter-leg in the destination account
+        prisma.transaction.create({
+            data: {
+                transferId,
+                date: when,
+                amount: counterAmount,
+                kind: counterKind,
+                description,
+                isSaving: false,
+                notes,
+                accountId: dstAcc.id,
+            },
+        }),
+    ]);
+
+    return {
+        transferId,
+        source: toDto(updatedSrc),
+        destination: toDto(dstTx),
+    };
 }
