@@ -148,8 +148,8 @@ const activeIdModel = computed<number | null>({
         <!-- CONTENT -->
         <section class="min-h-0 flex flex-col md:overflow-hidden">
             <header
-                class="border-b bg-primary text-night border-night sticky top-0 z-10 px-4 md:px-12 flex items-center gap-3 md:gap-6 h-16">
-                <h1 class="font-heading font-semibold">{{ currentTitle }}</h1>
+                class="border-b bg-primary text-secondary border-night sticky top-0 z-20 px-4 md:px-12 flex items-center gap-3 md:gap-6 h-16">
+                <h1 class="font-heading font-semibold uppercase text-4xl text-secondary">{{ currentTitle }}</h1>
 
                 <!-- Right cluster: stable & friendly -->
                 <div class="ml-auto flex items-center gap-4">
