@@ -4,9 +4,6 @@ build/
 
 *.env
 
-package-lock.json
-yarn.lock
-
 *.log
 *.logs
 *.sql
