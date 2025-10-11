@@ -1,6 +1,6 @@
 // src/repositories/transactionRules.repository.ts
 import prisma from "../config/prisma";
-import type { Prisma, TransactionRule, TransactionKind } from "../generated/prisma";
+import type { TransactionRule, TransactionKind } from "@prisma/client";
 
 export type RuleCreateInput = {
     name: string;

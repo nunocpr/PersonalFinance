@@ -1,4 +1,4 @@
-import { TransactionKind } from "../generated/prisma";
+import { TransactionKind } from "@prisma/client";
 
 // types/transactions.ts
 export type SortDir = "asc" | "desc";

@@ -1,5 +1,5 @@
 import * as repo from "../repositories/category.repository";
-import type { Category } from "../generated/prisma";
+import type { Category } from "@prisma/client";
 import type { CreateCategoryInput } from "../repositories/category.repository";
 
 export const VALID_KINDS = ["expense", "income", "transfer"] as const;

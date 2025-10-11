@@ -1,5 +1,5 @@
 import prisma from "../config/prisma";
-import type { Prisma, Category } from "../generated/prisma";
+import type { Prisma, Category } from "@prisma/client";
 
 // Input shape the controller/service will pass in
 export type CreateCategoryInput = {

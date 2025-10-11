@@ -1,7 +1,7 @@
 // src/services/transactions/ruleMatcher.ts
 
 import prisma from "../config/prisma";
-import { TransactionKind, TransactionRule } from "../generated/prisma";
+import { TransactionKind, TransactionRule } from "@prisma/client";
 
 // Build a predicate for a rule
 function buildPredicate(rule: TransactionRule): (txt: string) => boolean {

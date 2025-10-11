@@ -1,8 +1,8 @@
 // repositories/transactions.repository.ts
 import prisma from "../config/prisma";
-import type { Transaction, TransactionKind } from "../generated/prisma";
+import type { Transaction, TransactionKind, Prisma } from "@prisma/client";
 import type { ListFilters, CreateInput, UpdateInput, TransferInput } from "../types/transactions";
-import type { Prisma } from "../generated/prisma";
+
 import { matchRule, normalizeAmountForKind } from "../utils/ruleMatcher";
 import { randomUUID } from "crypto";
 

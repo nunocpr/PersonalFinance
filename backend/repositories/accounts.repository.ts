@@ -1,6 +1,6 @@
 // backend/repositories/accounts.repository.ts
 import prisma from "../config/prisma";
-import type { Prisma } from "../generated/prisma";
+import type { Prisma } from "@prisma/client";
 import type { CreateInput, UpdateInput } from "../types/accounts";
 import { toDto } from "../types/accounts";
 
