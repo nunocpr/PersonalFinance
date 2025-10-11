@@ -1,39 +1,73 @@
 // server.ts
-import fs from "fs";
-import http from "http";
-import https from "https";
 import app from "./app";
 import config from "./config/config";
 
-const HTTPS_PORT = Number(config.PORT || 3443);
-const HTTP_PORT = 3000;
+const IS_PROD = process.env.NODE_ENV === "production";
 
-const httpsOptions = {
-    key: fs.readFileSync("../certs/localhost-key.pem"),
-    cert: fs.readFileSync("../certs/localhost.pem"),
-};
-
-// trust proxy (useful later behind reverse proxies)
+// Trust the platform proxy so req.secure works (X-Forwarded-Proto)
 app.set("trust proxy", 1);
 
-// Enforce HTTPS at app level (defense in depth)
-app.use((req, res, next) => {
-    if (req.secure) return next();
-    const host = (req.headers.host || "").replace(/:\d+$/, "");
-    return res.redirect(301, `https://${host}:${HTTPS_PORT}${req.url}`);
-});
+// In production: no local certs. TLS terminates at the platform edge.
+// Optionally enforce HTTPS using the forwarded proto header.
+if (IS_PROD) {
+    app.use((req, res, next) => {
+        const proto = (req.headers["x-forwarded-proto"] as string) || (req.secure ? "https" : "http");
+        if (proto !== "https") {
+            return res.redirect(301, `https://${req.headers.host}${req.url}`);
+        }
+        next();
+    });
 
-https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
-    console.log(`🔒 HTTPS server running at https://localhost:${HTTPS_PORT}`);
-    console.log(`Env: ${process.env.NODE_ENV || "development"}`);
-});
+    const PORT = Number(process.env.PORT || config.PORT || 3000);
+    app.listen(PORT, "0.0.0.0", () => {
+        console.log(`🚀 Server listening on port ${PORT} (production)`);
+    });
+} else {
+    // Development: try to start HTTPS with local certs.
+    // If certs are missing, fall back to plain HTTP.
+    const DEV_HTTPS_PORT = Number(process.env.DEV_HTTPS_PORT || config.PORT || 3443);
+    const DEV_HTTP_PORT = Number(process.env.DEV_HTTP_PORT || 3000);
 
-// Lightweight HTTP → HTTPS redirect server
-http.createServer((req, res) => {
-    const host = (req.headers.host || "").replace(/:\d+$/, "");
-    res.statusCode = 301;
-    res.setHeader("Location", `https://${host}:${HTTPS_PORT}${req.url}`);
-    res.end();
-}).listen(HTTP_PORT, () => {
-    console.log(`↪ HTTP redirector on https://localhost:${HTTP_PORT} → HTTPS`);
-});
+    try {
+        // Lazy-require only in dev so prod bundle doesn’t need these modules/files
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const fs = require("fs");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const http = require("http");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const https = require("https");
+
+        const httpsOptions = {
+            key: fs.readFileSync("../certs/localhost-key.pem"),
+            cert: fs.readFileSync("../certs/localhost.pem"),
+        };
+
+        // Redirect HTTP -> HTTPS locally
+        app.use((req, res, next) => {
+            if (req.secure) return next();
+            const host = (req.headers.host || "").replace(/:\d+$/, "");
+            return res.redirect(301, `https://${host}:${DEV_HTTPS_PORT}${req.url}`);
+        });
+
+        https.createServer(httpsOptions, app).listen(DEV_HTTPS_PORT, "0.0.0.0", () => {
+            console.log(`🔒 HTTPS dev server: https://localhost:${DEV_HTTPS_PORT}`);
+            console.log(`🌱 NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+        });
+
+        http.createServer((req: any, res: any) => {
+            const host = (req.headers.host || "").replace(/:\d+$/, "");
+            res.statusCode = 301;
+            res.setHeader("Location", `https://${host}:${DEV_HTTPS_PORT}${req.url}`);
+            res.end();
+        }).listen(DEV_HTTP_PORT, "0.0.0.0", () => {
+            console.log(`↪ HTTP redirector:  http://localhost:${DEV_HTTP_PORT} → HTTPS`);
+        });
+    } catch (err) {
+        // Fallback: no certs available -> just run HTTP in dev
+        const PORT = Number(process.env.PORT || config.PORT || 3000);
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log(`🟢 Dev server (HTTP) listening on http://localhost:${PORT}`);
+            console.log("Tip: add ../certs/localhost.pem & localhost-key.pem for local HTTPS.");
+        });
+    }
+}
