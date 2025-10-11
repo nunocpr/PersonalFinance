@@ -2,24 +2,20 @@
 import app from "./app";
 import config from "./config/config";
 
-const platformPort = process.env.PORT; // Koyeb/Render/Fly set this
-const isProd = process.env.NODE_ENV === "production" || !!platformPort;
-
-// trust proxy so req.secure works behind Koyeb's proxy
 app.set("trust proxy", 1);
 
+const platformPort = process.env.PORT;
+const isProd = process.env.NODE_ENV === "production" || !!platformPort;
+
 if (isProd) {
-    const PORT = Number(platformPort || config.PORT || 3000);
-    // Optional HTTPS enforcement behind proxy
+    const PORT = Number(platformPort || 8000); // <- ignore config in prod
     app.use((req, res, next) => {
         const proto = (req.headers["x-forwarded-proto"] as string) || (req.secure ? "https" : "http");
         if (proto !== "https") return res.redirect(301, `https://${req.headers.host}${req.url}`);
         next();
     });
-
-    app.listen(PORT, "0.0.0.0", () => {
-        console.log(`🚀 Server listening on port ${PORT} (prod)`);
-    });
+    console.log("PORT env =", platformPort);   // <- add this line temporarily
+    app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server listening on port ${PORT} (prod)`));
 } else {
     // ---- Local dev (HTTPS if certs exist, else HTTP) ----
     try {
