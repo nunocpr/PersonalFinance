@@ -2,22 +2,41 @@
 import app from "./app";
 import config from "./config/config";
 
+// Trust upstream proxy (needed for x-forwarded-proto)
 app.set("trust proxy", 1);
+
+// Health first
+app.get("/health", (_req, res) => res.status(200).send("ok"));
 
 const platformPort = process.env.PORT;
 const isProd = process.env.NODE_ENV === "production" || !!platformPort;
 
 if (isProd) {
-    const PORT = Number(platformPort || 8000); // <- ignore config in prod
+    // On Koyeb/Render/etc. always bind to the platform port
+    const PORT = Number(platformPort || 8000);
+
+    // Enforce HTTPS (skip /health)
     app.use((req, res, next) => {
-        const proto = (req.headers["x-forwarded-proto"] as string) || (req.secure ? "https" : "http");
-        if (proto !== "https") return res.redirect(301, `https://${req.headers.host}${req.url}`);
+
+        if (req.path === "/health") return next();
+
+        const proto =
+            (req.headers["x-forwarded-proto"] as string) ||
+            (req.secure ? "https" : "http");
+
+        if (proto !== "https") {
+            // 308 preserves method and body on redirect
+            return res.redirect(308, `https://${req.headers.host}${req.url}`);
+        }
+
         next();
     });
-    console.log("PORT env =", platformPort);   // <- add this line temporarily
-    app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server listening on port ${PORT} (prod)`));
+
+    app.listen(PORT, "0.0.0.0", () => {
+        console.log(`🚀 Server listening on port ${PORT} (prod)`);
+    });
 } else {
-    // ---- Local dev (HTTPS if certs exist, else HTTP) ----
+    // ---- Local development ----
     try {
         const fs = require("fs");
         const http = require("http");
@@ -31,10 +50,11 @@ if (isProd) {
             cert: fs.readFileSync("../certs/localhost.pem"),
         };
 
+        // Redirect plain HTTP → HTTPS locally (skip /health)
         app.use((req, res, next) => {
-            if (req.secure) return next();
+            if (req.secure || req.path === "/health") return next();
             const host = (req.headers.host || "").replace(/:\d+$/, "");
-            return res.redirect(301, `https://${host}:${DEV_HTTPS_PORT}${req.url}`);
+            return res.redirect(308, `https://${host}:${DEV_HTTPS_PORT}${req.url}`);
         });
 
         https.createServer(httpsOptions, app).listen(DEV_HTTPS_PORT, "0.0.0.0", () => {
@@ -43,7 +63,7 @@ if (isProd) {
 
         http.createServer((req: any, res: any) => {
             const host = (req.headers.host || "").replace(/:\d+$/, "");
-            res.writeHead(301, { Location: `https://${host}:${DEV_HTTPS_PORT}${req.url}` });
+            res.writeHead(308, { Location: `https://${host}:${DEV_HTTPS_PORT}${req.url}` });
             res.end();
         }).listen(DEV_HTTP_PORT, "0.0.0.0", () => {
             console.log(`↪ HTTP redirector:  http://localhost:${DEV_HTTP_PORT} → HTTPS`);
