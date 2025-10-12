@@ -18,7 +18,9 @@
         "helmet": "^8.1.0",
         "jsonwebtoken": "^9.0.2",
         "morgan": "^1.10.1",
-        "nodemailer": "^7.0.5"
+        "nodemailer": "^7.0.5",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.3"
     },
     "devDependencies": {
         "@types/bcrypt": "^6.0.0",
@@ -29,8 +31,6 @@
         "@types/morgan": "^1.9.10",
         "@types/node": "^24.2.1",
         "@types/nodemailer": "^6.4.20",
-        "prisma": "^6.14.0",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.9.2"
+        "prisma": "^6.14.0"
     }
 }
