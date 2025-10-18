@@ -18,17 +18,27 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
-          cache-dependency-path: 'frontend/yarn.lock'
-      - run: yarn install --frozen-lockfile
-      - run: |
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      # IMPORTANT: install devDependencies (vite)
+      - run: yarn install --frozen-lockfile --production=false
+
+      # Inject Vite envs for the build
+      - name: Create .env.production
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env.production
+          echo "BASE_URL=/PersonalFinance/" >> .env.production
+
+      - name: Build
+        run: |
           yarn build
           cp dist/index.html dist/404.html
-        env:
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}   # optional if you set a secret
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist
