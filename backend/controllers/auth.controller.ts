@@ -20,14 +20,14 @@ const MSG = {
 const atCookie = {
     httpOnly: true,
     secure: true,
-    sameSite: "lax" as const,
+    sameSite: "none" as const,
     path: "/",
     maxAge: 15 * 60 * 1000, // 15m
 };
 const rtCookie = {
     httpOnly: true,
     secure: true,
-    sameSite: "lax" as const,
+    sameSite: "none" as const,
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
 };
@@ -66,7 +66,7 @@ export const refresh = async (req: Request, res: Response) => {
         if (!rt) return res.status(401).json({ message: "Unauthorized" });
 
         const origin = req.get("origin") || req.get("referer") || "";
-        if (!origin.startsWith(config.FRONTEND_URL)) return res.status(403).json({ message: "Forbidden" });
+        if (!origin.startsWith(config.FRONTEND_ORIGIN)) return res.status(403).json({ message: "Forbidden" });
 
         const payload = verifyRefresh(rt); // { userPublicId, v }
         const user = await authRepo.findUserByPublicId(payload.userPublicId);

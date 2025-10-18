@@ -13,6 +13,7 @@ interface Config {
     };
     APP_URL: string;
     FRONTEND_URL: string;
+    FRONTEND_ORIGIN: string;
     EMAIL: {
         FROM: string;
         SMTP_HOST: string;
@@ -35,6 +36,7 @@ const config: Config = {
     },
     APP_URL: process.env.APP_URL || "https://localhost:3000",
     FRONTEND_URL: process.env.FRONTEND_URL || "https://localhost:5173",
+    FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN || "https://localhost:5173",
     EMAIL: {
         FROM: process.env.EMAIL_FROM || "no-reply@example.com",
         SMTP_HOST: process.env.SMTP_HOST || "",

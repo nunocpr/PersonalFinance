@@ -39,12 +39,19 @@ app.use(
 // CORS — point to your HTTPS frontend
 app.use(
     cors({
-        origin: config.FRONTEND_URL, // e.g. https://localhost:5173
+        origin: config.FRONTEND_ORIGIN, // e.g. https://localhost:5173
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"]
     })
 );
+
+app.options("*", cors({
+    origin: config.FRONTEND_ORIGIN,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 // --- Routes ---
 app.use("/api/auth", authRoutes);
