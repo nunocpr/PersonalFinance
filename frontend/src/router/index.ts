@@ -1,3 +1,4 @@
+// src/router/index.ts
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuth } from "@/services/auth/auth.store";
 
@@ -22,25 +23,28 @@ const routes = [
         component: DashboardLayout,
         meta: { requiresAuth: true },
         children: [
-            { path: "", name: "dashboard", component: () => import("@/views/dashboard/DashboardView.vue"), meta: { title: "Painel" } },
-            { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue"), meta: { title: "Contas" } },
-            { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue"), meta: { title: "Perfil" } },
-            { path: "categories", name: "categories", component: () => import("@/views/dashboard/CategoriesView.vue"), meta: { title: "Categorias" } },
-            { path: "transactions", name: "transactions", component: () => import("@/views/dashboard/TransactionsView.vue"), meta: { title: "Transacções" } },
-            { path: "rules", name: "rules", component: () => import("@/views/dashboard/RulesView.vue"), meta: { title: "Regras" } },
+            { path: "", name: "dashboard", component: () => import("@/views/dashboard/DashboardView.vue") },
+            { path: "accounts", name: "accounts", component: () => import("@/views/dashboard/AccountsView.vue") },
+            { path: "profile", name: "profile", component: () => import("@/views/dashboard/ProfileView.vue") },
+            { path: "categories", name: "categories", component: () => import("@/views/dashboard/CategoriesView.vue") },
+            { path: "transactions", name: "transactions", component: () => import("@/views/dashboard/TransactionsView.vue") },
+            { path: "rules", name: "rules", component: () => import("@/views/dashboard/RulesView.vue") },
         ],
     },
-    { path: "/:pathMatch(.*)*", redirect: "/auth/login" },
+    // use a named redirect so the base is respected
+    { path: "/:pathMatch(.*)*", redirect: { name: "auth-login" } },
 ];
 
-const router = createRouter({ history: createWebHistory(), routes });
+// ✅ pass Vite's base to the history
+const router = createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes,
+});
 
 router.beforeEach(async (to) => {
     const { authed, bootstrapAuth } = useAuth();
 
-    if (to.matched.some(r => r.meta?.guestOnly)) {
-        return true;
-    }
+    if (to.matched.some(r => r.meta?.guestOnly)) return true;
 
     await bootstrapAuth();
 

@@ -7,14 +7,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig(({ mode }) => {
-    const isDev = mode === "development";
-
     return {
-        base: isDev ? "/" : "/PersonalFinance/",
+        base: mode === "development" ? "/" : "/PersonalFinance/",
 
         plugins: [vue()],
 
-        server: isDev
+        server: mode === "development"
             ? {
                 host: "localhost",
                 port: 5173,
