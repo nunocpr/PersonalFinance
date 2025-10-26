@@ -26,6 +26,21 @@ app.use(cookieParser());
 // Logging (before other middlewares is fine)
 app.use(morgan("dev"));
 
+// Always add CORS headers
+
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", config.FRONTEND_ORIGIN);
+    res.header("Vary", "Origin"); // for caches/CF
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+
+    // Handle preflight here so it never falls through to a 404/redirect
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+});
+
+
 // Security headers
 app.use(
     helmet({
@@ -37,14 +52,14 @@ app.use(
 );
 
 // CORS — point to your HTTPS frontend
-app.use(
+/* app.use(
     cors({
         origin: config.FRONTEND_ORIGIN, // e.g. https://localhost:5173
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"]
     })
-);
+); */
 
 app.use((req, res, next) => {
     if (req.method === "OPTIONS") {
