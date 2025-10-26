@@ -46,12 +46,17 @@ app.use(
     })
 );
 
-app.options("*", cors({
-    origin: config.FRONTEND_ORIGIN,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use((req, res, next) => {
+    if (req.method === "OPTIONS") {
+        res.header("Access-Control-Allow-Origin", config.FRONTEND_ORIGIN);
+        res.header("Vary", "Origin");
+        res.header("Access-Control-Allow-Credentials", "true");
+        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+        return res.sendStatus(204);
+    }
+    next();
+});
 
 // --- Routes ---
 app.use("/api/auth", authRoutes);
