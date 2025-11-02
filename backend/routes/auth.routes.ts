@@ -6,18 +6,19 @@ import {
 import { authenticate } from "../middlewares/auth";
 import { noStore } from "../middlewares/cache";
 
-const router = Router();
+export const protectedAuth = Router();
 
-router.post("/register", registerUser);
-router.post("/login", noStore, loginUser);
-router.post("/logout", authenticate, noStore, logout);
-router.post("/refresh", noStore, refresh);
+export const publicAuth = Router();
 
-router.post("/verify-email", verifyEmail);
-router.post("/resend-verification", resendVerification);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+protectedAuth.post("/logout", authenticate, noStore, logout);
+protectedAuth.post("/refresh", noStore, refresh);
+protectedAuth.get("/me", authenticate, noStore, me);
 
-router.get("/me", authenticate, noStore, me);
+publicAuth.post("/register", registerUser);
+publicAuth.post("/login", noStore, loginUser);
+publicAuth.post("/verify-email", verifyEmail);
+publicAuth.post("/resend-verification", resendVerification);
+publicAuth.post("/forgot-password", forgotPassword);
+publicAuth.post("/reset-password", resetPassword);
 
-export default router;
+export default { protectedAuth, publicAuth };

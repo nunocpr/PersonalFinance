@@ -1,5 +1,5 @@
 // src/services/transactions/categoryDefaults.ts
-const KEY = "pf_default_subcategory_by_account";
+const KEY = "pf_default_subcategory";
 
 type MapType = Record<string, number>; // accountId -> subcategoryId
 

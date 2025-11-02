@@ -96,6 +96,16 @@ export function useAccounts() {
         if (next != null) await refreshCurrentBalance(next);
     }
 
+    function reset() {
+        items.value = [];
+        loaded.value = false;
+        loading.value = false;
+        activeId.value = null;
+        currentBalanceById.value = new Map();
+
+        try { localStorage.removeItem(ACTIVE_KEY); } catch { }
+    }
+
     // keep active account fresh when switching
     watch(activeId, async (id) => {
         if (id == null) return;
@@ -118,5 +128,6 @@ export function useAccounts() {
         remove,
         accountTypeLabelsPt: ACCOUNT_TYPE_LABELS_PT,
         getAccountTypeLabelPt,
+        reset
     };
 }

@@ -24,7 +24,7 @@ export async function listTree(userPublicId: string): Promise<Category[]> {
         orderBy: { sortOrder: "asc" },
         include: {
             children: {
-                where: { archived: false },
+                where: { archived: false, user: { publicId: userPublicId } },
                 orderBy: { sortOrder: "asc" },
             },
         },
@@ -39,6 +39,15 @@ export async function create(
     userPublicId: string,
     data: CreateCategoryInput
 ): Promise<Category> {
+
+    if (data.parentId != null) {
+        const parent = await prisma.category.findFirst({
+            where: { id: data.parentId, user: { publicId: userPublicId } },
+            select: { id: true },
+        });
+        if (!parent) throw new Error("Parent not found."); // or 403
+    }
+
     let sortOrder = data.sortOrder;
 
     if (sortOrder == null) {
@@ -77,9 +86,12 @@ export async function update(
     id: number,
     patch: Partial<Pick<Category, "name" | "description" | "icon" | "color" | "type" | "archived">>
 ): Promise<Category> {
+    // Belt & suspenders: never allow client to sneak structural fields
+    const { name, description, icon, color, type, archived } = patch ?? {};
+
     const { count } = await prisma.category.updateMany({
         where: { id, user: { publicId: userPublicId } },
-        data: patch,
+        data: { name, description, icon, color, type, archived },
     });
     if (count === 0) throw new Error("Category not found.");
 
@@ -98,21 +110,38 @@ export async function move(
     newParentId: number | null
 ): Promise<Category> {
     return prisma.$transaction(async (tx) => {
-        // ownership
+        // 1) Source must belong to user
         const cat = await tx.category.findFirst({
             where: { id, user: { publicId: userPublicId } },
+            select: { id: true },
         });
         if (!cat) throw new Error("Category not found.");
 
+        // 2) If moving under a parent, that parent must also belong to user
+        if (newParentId != null) {
+            const parent = await tx.category.findFirst({
+                where: { id: newParentId, user: { publicId: userPublicId } },
+                select: { id: true },
+            });
+            if (!parent) throw new Error("Parent not found.");
+        }
+
+        // 3) Compute new sort in the *user-scoped* sibling set
         const max = await tx.category.aggregate({
             _max: { sortOrder: true },
             where: { parentId: newParentId, user: { publicId: userPublicId } },
         });
         const newSort = (max._max.sortOrder ?? -1) + 1;
 
-        return tx.category.update({
-            where: { id },
+        // 4) Move
+        const { count } = await tx.category.updateMany({
+            where: { id, user: { publicId: userPublicId } },
             data: { parentId: newParentId, sortOrder: newSort },
+        });
+        if (count === 0) throw new Error("Category not found.");
+
+        return tx.category.findFirstOrThrow({
+            where: { id, user: { publicId: userPublicId } },
         });
     });
 }
@@ -125,14 +154,32 @@ export async function reorderSiblings(
     parentId: number | null,
     orderedIds: number[]
 ): Promise<void> {
-    await prisma.$transaction(
-        orderedIds.map((id, idx) =>
-            prisma.category.updateMany({
+    await prisma.$transaction(async (tx) => {
+        // 1) Fetch the set we are allowed to reorder (user + parent)
+        const siblings = await tx.category.findMany({
+            where: { parentId, user: { publicId: userPublicId } },
+            select: { id: true },
+        });
+        const allowed = new Set(siblings.map(s => s.id));
+
+        // 2) Ensure every provided id is owned & in this parent
+        if (!orderedIds.length) return; // nothing to do
+        for (const id of orderedIds) {
+            if (!allowed.has(id)) throw new Error("Invalid category in ordering.");
+        }
+
+        // (Optional but nice): ensure no missing ids (i.e., client sent all)
+        // if (siblings.length !== orderedIds.length) throw new Error("Ordering must include all siblings.");
+
+        // 3) Apply order
+        for (let idx = 0; idx < orderedIds.length; idx++) {
+            const id = orderedIds[idx];
+            await tx.category.updateMany({
                 where: { id, parentId, user: { publicId: userPublicId } },
                 data: { sortOrder: idx },
-            })
-        )
-    );
+            });
+        }
+    });
 }
 
 /**
@@ -165,6 +212,7 @@ export async function hardDelete(
     await prisma.$transaction(async (tx) => {
         const owned = await tx.category.findFirst({
             where: { id, user: { publicId: userPublicId } },
+            select: { id: true },
         });
         if (!owned) throw new Error("Category not found.");
 

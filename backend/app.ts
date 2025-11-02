@@ -4,19 +4,19 @@ import morgan from "morgan";
 import helmet from "helmet";
 import config from "./config/config";
 import cookieParser from "cookie-parser";
-import cors from "cors";
 import { Router } from "express";
 
 
 // routes
 import categoryRoutes from "./routes/category.routes";
 import userRoutes from "./routes/user.routes";
-import authRoutes from "./routes/auth.routes";
+import { publicAuth, protectedAuth } from "./routes/auth.routes";
 import accountRoutes from "./routes/accounts.routes";
 import rulesRoutes from "./routes/transactionRules.routes";
 import transactionsRouter from "./routes/transactions.routes";
 import errorHandler from "./middlewares/errorHandler";
-import { noStore } from "./middlewares/cache";
+import { noStore, noStorePrivate } from "./middlewares/cache";
+import { authenticate } from "./middlewares/auth";
 
 
 const app = express();
@@ -62,16 +62,19 @@ app.use(
 );
 
 // ---------- Public routes (no auth) ----------
-app.use("/api/auth", noStore, authRoutes); // login/logout/refresh/me lives here; `me` will be protected inside
+app.use("/api/auth", noStore, publicAuth); // login/logout/refresh/me lives here; `me` will be protected inside
 
 const protectedApi = Router();
 
+protectedApi.use(authenticate, noStorePrivate);
+
+
 // --- Routes ---
-protectedApi.use("/auth", authRoutes);
+protectedApi.use("/auth", protectedAuth);
 protectedApi.use("/accounts", accountRoutes);
 protectedApi.use("/transactions", transactionsRouter);
 protectedApi.use("/users", userRoutes);
-protectedApi.use("/categories", categoryRoutes);
+protectedApi.use("/categories", noStore, categoryRoutes);
 protectedApi.use("/transaction-rules", rulesRoutes);
 
 app.use("/api", protectedApi);

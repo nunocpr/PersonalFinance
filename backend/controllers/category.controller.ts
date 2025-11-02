@@ -4,9 +4,10 @@ import * as repo from "../repositories/category.repository";
 // GET /api/categories/tree
 export const list: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
     const items = await repo.listTree(req.user.publicId);
-    return res.json(items); // <= return the array, not { items }
+
+    console.log("[category]: listing categories", items)
+    return res.json(items);
 };
 
 
