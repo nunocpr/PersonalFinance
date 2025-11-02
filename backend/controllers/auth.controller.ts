@@ -84,13 +84,17 @@ export const refresh = async (req: Request, res: Response) => {
 
 export const logout = async (req: Request, res: Response) => {
     try {
+        console.log("[auth] logout requested for user:", req.user?.publicId);
         await authService.bumpTokenVersionByPublicId(req.user?.publicId);
     } catch (e) {
         console.error("[auth] logout bump failed:", e);
     } finally {
+        console.error("[auth] clearing cookies on logout");
+
         // clear regardless of bump result
-        res.clearCookie("pf_at", { ...atCookie, maxAge: undefined });
-        res.clearCookie("pf_rt", { ...rtCookie, maxAge: undefined });
+        res.clearCookie("pf_at", { ...atCookie, expires: new Date(0), maxAge: 0 });
+        res.clearCookie("pf_rt", { ...rtCookie, expires: new Date(0), maxAge: 0 });
+
         res.json({ message: "Logged out" });
     }
 };

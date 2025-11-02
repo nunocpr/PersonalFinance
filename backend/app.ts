@@ -2,9 +2,11 @@
 import express from "express";
 import morgan from "morgan";
 import helmet from "helmet";
-import cors from "cors";
 import config from "./config/config";
 import cookieParser from "cookie-parser";
+import cors from "cors";
+import { Router } from "express";
+
 
 // routes
 import categoryRoutes from "./routes/category.routes";
@@ -14,6 +16,7 @@ import accountRoutes from "./routes/accounts.routes";
 import rulesRoutes from "./routes/transactionRules.routes";
 import transactionsRouter from "./routes/transactions.routes";
 import errorHandler from "./middlewares/errorHandler";
+import { noStore } from "./middlewares/cache";
 
 
 const app = express();
@@ -24,17 +27,24 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Logging (before other middlewares is fine)
-app.use(morgan("dev"));
+if (process.env.NODE_ENV !== "production")
+    app.use(morgan("dev"));
+
+const allowedOrigins = [
+    config.FRONTEND_ORIGIN,               // e.g. "https://nunocpr.github.io"
+    ...(process.env.NODE_ENV !== "production" ? ["https://localhost:5173"] : []),
+];
 
 // Always add CORS headers
-
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", config.FRONTEND_ORIGIN);
-    res.header("Vary", "Origin"); // for caches/CF
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+        res.header("Vary", "Origin");
+        res.header("Access-Control-Allow-Credentials", "true");
+        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    }
     // Handle preflight here so it never falls through to a 404/redirect
     if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
@@ -51,35 +61,20 @@ app.use(
     })
 );
 
-// CORS — point to your HTTPS frontend
-/* app.use(
-    cors({
-        origin: config.FRONTEND_ORIGIN, // e.g. https://localhost:5173
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"]
-    })
-); */
+// ---------- Public routes (no auth) ----------
+app.use("/api/auth", noStore, authRoutes); // login/logout/refresh/me lives here; `me` will be protected inside
 
-app.use((req, res, next) => {
-    if (req.method === "OPTIONS") {
-        res.header("Access-Control-Allow-Origin", config.FRONTEND_ORIGIN);
-        res.header("Vary", "Origin");
-        res.header("Access-Control-Allow-Credentials", "true");
-        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-        return res.sendStatus(204);
-    }
-    next();
-});
+const protectedApi = Router();
 
 // --- Routes ---
-app.use("/api/auth", authRoutes);
-app.use("/api/accounts", accountRoutes);
-app.use("/api/transactions", transactionsRouter);
-app.use("/api/users", userRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/transaction-rules", rulesRoutes);
+protectedApi.use("/auth", authRoutes);
+protectedApi.use("/accounts", accountRoutes);
+protectedApi.use("/transactions", transactionsRouter);
+protectedApi.use("/users", userRoutes);
+protectedApi.use("/categories", categoryRoutes);
+protectedApi.use("/transaction-rules", rulesRoutes);
+
+app.use("/api", protectedApi);
 
 // Error handling last
 app.use(errorHandler);

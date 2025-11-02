@@ -25,12 +25,9 @@ export function useAuth() {
         }
     }
 
-    async function clearSession(opts: { remote?: boolean } = {}) {
-        // default remote=false; call backend logout only when explicitly asked
-        const remote = opts.remote ?? false;
-        if (remote) { try { await logout(); } catch { /* ignore */ } }
+    async function clearSession() {
+        try { await logout(); } catch { }
         userRef.value = null;
-        // no localStorage writes since you moved to cookies
     }
 
     return { user: computed(() => userRef.value), authed: authedRef, bootstrapAuth, setSession, clearSession };
