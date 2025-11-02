@@ -35,7 +35,6 @@ if (NODE_ENV === "production") {
     try {
         // Try HTTPS if certs exist; fall back to plain HTTP
         const fs = require("fs");
-        const http = require("http");
         const https = require("https");
 
         const httpsOptions = {
@@ -52,14 +51,6 @@ if (NODE_ENV === "production") {
 
         https.createServer(httpsOptions, app).listen(APP_PORT, "0.0.0.0", () => {
             console.log(`🔒 HTTPS dev server: https://localhost:${APP_PORT}`);
-        });
-
-        http.createServer((req: any, res: any) => {
-            const host = (req.headers.host || "").replace(/:\d+$/, "");
-            res.writeHead(308, { Location: `https://${host}:${APP_PORT}${req.url}` });
-            res.end();
-        }).listen(APP_PORT, "0.0.0.0", () => {
-            console.log(`↪ HTTP redirector:  http://localhost:${APP_PORT} → HTTPS`);
         });
     } catch {
         // No certs → simple HTTP server in dev

@@ -6,7 +6,6 @@ import type {
     TxUpdateDto,
     TxListResponse,
     Transaction,
-    TransferCreateDto,
 } from "@/types/transactions";
 
 export const TransactionService = {
