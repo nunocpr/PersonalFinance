@@ -14,6 +14,7 @@ export function toDto(t: Transaction) {
         id: t.id,
         date: t.date,
         amount: Number(t.amount),
+        kind: t.kind,
         description: t.description,
         isSaving: t.isSaving,
         notes: t.notes ?? null,
@@ -174,7 +175,7 @@ export async function create(userPublicId: string, dto: CreateInput) {
 
     // Auto-match rule if no category/kind supplied
     let categoryId = dto.categoryId ?? null;
-    let kind: TransactionKind | undefined | null = dto.kind ?? null;
+    let kind: TransactionKind = dto.kind;
 
     if (!categoryId || !kind) {
         const rule = await matchRule(userPublicId, dto.description || "");
@@ -183,9 +184,6 @@ export async function create(userPublicId: string, dto: CreateInput) {
             if (!kind && rule.kind) kind = rule.kind;
         }
     }
-
-    // Derive kind from sign if still missing
-    if (!kind) kind = dto.amount < 0 ? "DEBIT" : "CREDIT";
 
     // Enforce sign-kind consistency
     const normalizedAmount = normalizeAmountForKind(dto.amount, kind);
@@ -242,7 +240,7 @@ export async function update(userPublicId: string, id: string, patch: UpdateInpu
 
     // handle kind + amount consistency
     let amountCents: number | undefined = patch.amount;
-    let kind: TransactionKind | undefined = patch.kind as any;
+    let kind: TransactionKind = patch.kind as any;
 
     // If caller supplied neither kind nor amount, we leave them as-is.
     // If one is supplied, normalize the other (when both present, honor both but normalize amount sign).
@@ -251,10 +249,6 @@ export async function update(userPublicId: string, id: string, patch: UpdateInpu
         const current = await prisma.transaction.findUnique({ where: { id }, select: { amount: true } });
         if (!current) throw new Error("Transação não encontrada.");
         amountCents = Number(current.amount);
-    }
-
-    if (amountCents !== undefined && !kind) {
-        kind = amountCents < 0 ? "DEBIT" : "CREDIT";
     }
 
     if (amountCents !== undefined && kind) {

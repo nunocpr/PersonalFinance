@@ -20,11 +20,11 @@ export type CreateInput = {
     amount: number;
     description: string;
     accountId: number;
+    kind: TransactionKind;
     categoryId?: number | null;
     incomeSourceId?: number | null;
     isSaving?: boolean;
     notes?: string | null;
-    kind?: TransactionKind | null;
 };
 
 export type UpdateInput = Partial<CreateInput>;

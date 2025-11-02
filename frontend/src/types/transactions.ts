@@ -3,6 +3,7 @@ export interface Transaction {
     id: string;
     date: string;
     amount: number;
+    kind: EnumTransactionKind.CREDIT | EnumTransactionKind.DEBIT;
     description: string;
     isSaving: boolean;
     notes: string | null;
@@ -35,6 +36,7 @@ export interface TxFilters {
 export interface TxCreateDto {
     date?: string;
     amount: number;
+    kind: EnumTransactionKind.CREDIT | EnumTransactionKind.DEBIT;
     description: string;
     accountId: number;
     categoryId?: number | null;
@@ -54,3 +56,8 @@ export type TransferCreateDto = {
     description?: string | null;
     notes?: string | null;
 };
+
+export enum EnumTransactionKind {
+    DEBIT = "DEBIT",
+    CREDIT = "CREDIT"
+}

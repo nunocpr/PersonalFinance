@@ -7,6 +7,7 @@ import type { Category } from "@/types/categories";
 import MoneyCentsInput from "../inputs/MoneyCentsInput.vue";
 import BaseModal from "../ui/BaseModal.vue";
 import { TransactionService } from "@/services/transactions/transactions.service";
+import { EnumTransactionKind } from "@/types/transactions";
 
 type Mode = "create" | "edit";
 const props = defineProps<{
@@ -15,6 +16,7 @@ const props = defineProps<{
     value?: {
         id?: string;
         accountId?: number;
+        kind: EnumTransactionKind.CREDIT | EnumTransactionKind.DEBIT;
         date?: string;
         amount?: number;             // integer cents
         categoryId?: number | null;
@@ -28,6 +30,7 @@ const emit = defineEmits<{
     (e: "save", payload: {
         accountId: number;
         date: string;
+        kind: EnumTransactionKind.CREDIT | EnumTransactionKind.DEBIT;
         amount: number;              // integer cents
         categoryId: number | null;
         description: string | null;
@@ -56,6 +59,7 @@ const childCategories = computed<{ id: number; label: string; parent: Category }
 const form = reactive({
     accountId: 0,
     date: new Date().toISOString().slice(0, 10),
+    kind: EnumTransactionKind.DEBIT,
     amountCents: 0,
     categoryId: null as number | null,
     description: "" as string,
@@ -79,6 +83,7 @@ const otherAccounts = computed(() =>
 function reset() {
     form.accountId = activeId.value ?? (accounts.value[0]?.id ?? 0);
     form.date = new Date().toISOString().slice(0, 10);
+    form.kind = EnumTransactionKind.DEBIT;
     form.amountCents = 0;
     form.categoryId = null;
     form.description = "";
@@ -98,6 +103,7 @@ watch(
         if (props.mode === "edit" && props.value) {
             form.accountId = props.value.accountId ?? (activeId.value ?? 0);
             form.date = (props.value.date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+            form.kind = props.value.kind;
             form.amountCents = Number(props.value.amount ?? 0);
             form.categoryId = props.value.categoryId ?? null;
             form.description = (props.value.description ?? "") || "";
@@ -166,6 +172,7 @@ async function save() {
     emit("save", {
         accountId: form.accountId,
         date: form.date,
+        kind: form.kind,
         amount: form.amountCents, // integer cents
         categoryId: form.categoryId,
         description: form.description.trim() ? form.description.trim() : null,
@@ -198,6 +205,15 @@ async function save() {
                 <div class="text-sm text-gray-600 mb-1">Data</div>
                 <input v-model="form.date" type="date" class="w-full border rounded px-3 py-2" />
             </label>
+
+            <label class="block">
+                <div class="text-sm text-gray-600 mb-1">Tipo de Transação</div>
+                <select v-model="form.kind" class="w-full border rounded px-3 py-2">
+                    <option value="DEBIT">Débito</option>
+                    <option value="CREDIT">Crédito</option>
+                </select>
+            </label>
+
 
             <label class="block">
                 <div class="text-sm text-gray-600 mb-1">Valor</div>

@@ -103,7 +103,7 @@ const showEdit = ref(false);
 const editTx = ref<any | null>(null);
 
 /* Transfers modals */
-const showTransfer = ref(false);
+/* const showTransfer = ref(false); */
 const showConvert = ref(false);
 const convertTx = ref<any | null>(null);
 
@@ -304,10 +304,10 @@ async function onConverted() {
                     @click="show = true">
                     Adicionar
                 </Button>
-                <Button variant="primary" size="sm" :disabled="!hasAccounts" title="Transferir"
+                <!--                 <Button variant="primary" size="sm" :disabled="!hasAccounts" title="Transferir"
                     @click="showTransfer = true">
                     Transferir
-                </Button>
+                </Button> -->
             </div>
         </div>
 
@@ -407,8 +407,8 @@ async function onConverted() {
                         </div>
 
                         <div class="whitespace-nowrap">
-                            <span :class="t.amount < 0 ? 'text-red-600' : 'text-green-700'">{{ formatCentsEUR(t.amount)
-                            }}</span>
+                            <span :class="t.amount < 0 ? 'text-red-600' : 'text-green-700'">{{
+                                formatCentsEUR(t.amount) }}</span>
                         </div>
 
                         <div class="text-gray-800 truncate">{{ t.description || "—" }}</div>
@@ -512,7 +512,7 @@ async function onConverted() {
         <TransactionModal v-model:open="showEdit" mode="edit" :value="editTx" @save="onEditSave"
             @converted-transfer="onConverted" />
 
-        <TransferModal v-model:open="showTransfer" @created="onTransferCreated" />
+        <!-- <TransferModal v-model:open="showTransfer" @created="onTransferCreated" /> -->
         <ConvertToTransferModal v-model:open="showConvert" :tx="convertTx" @converted="onConverted" />
     </div>
 </template>
