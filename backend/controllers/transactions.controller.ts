@@ -3,6 +3,10 @@ import type { RequestHandler } from "express";
 import * as svc from "../services/transactions.service";
 import { parseListFilters } from "../utils/parseListFilters";
 
+function firstValue(v: string | string[] | undefined): string | undefined {
+    return Array.isArray(v) ? v[0] : v;
+}
+
 export const list: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
@@ -38,7 +42,9 @@ export const create: RequestHandler = async (req, res) => {
 export const update: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-        const t = await svc.update(req.user.publicId, req.params.id, req.body);
+        const id = firstValue(req.params.id);
+        if (!id) return res.status(400).json({ message: "ID inválido." });
+        const t = await svc.update(req.user.publicId, id, req.body);
         res.json(t);
     } catch (e: any) {
         const code = /não encontrada/i.test(String(e?.message)) ? 404 : 400;
@@ -49,7 +55,9 @@ export const update: RequestHandler = async (req, res) => {
 export const remove: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-        await svc.remove(req.user.publicId, req.params.id);
+        const id = firstValue(req.params.id);
+        if (!id) return res.status(400).json({ message: "ID inválido." });
+        await svc.remove(req.user.publicId, id);
         res.status(204).send();
     } catch (e: any) {
         const code = /não encontrada/i.test(String(e?.message)) ? 404 : 400;
@@ -65,7 +73,12 @@ export const createTransfer: RequestHandler = async (req, res) => {
 
 export const removeTransfer: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    try { await svc.removeTransfer(req.user.publicId, req.params.transferId); res.status(204).send(); }
+    try {
+        const transferId = firstValue(req.params.transferId);
+        if (!transferId) return res.status(400).json({ message: "ID da transferência inválido." });
+        await svc.removeTransfer(req.user.publicId, transferId);
+        res.status(204).send();
+    }
     catch (e: any) {
         const code = /não encontrada/i.test(String(e?.message)) ? 404 : 400;
         res.status(code).json({ message: e?.message ?? "Falha ao remover transferência." });
@@ -74,7 +87,8 @@ export const removeTransfer: RequestHandler = async (req, res) => {
 
 export const listTransfers: RequestHandler = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const accountId = req.query.accountId ? Number(req.query.accountId) : undefined;
+    const accountIdRaw = firstValue(req.query.accountId as string | string[] | undefined);
+    const accountId = accountIdRaw ? Number(accountIdRaw) : undefined;
     try { res.json({ items: await svc.listTransfers(req.user.publicId, accountId) }); }
     catch (e: any) { res.status(400).json({ message: e?.message ?? "Falha ao listar transferências." }); }
 };

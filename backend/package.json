@@ -1,6 +1,7 @@
 {
     "name": "personal-finance",
     "version": "1.0.0",
+    "packageManager": "yarn@1.22.22",
     "scripts": {
         "dev": "tsx watch server.ts",
         "build": "tsc",
