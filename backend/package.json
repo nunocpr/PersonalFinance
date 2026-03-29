@@ -4,8 +4,11 @@
     "packageManager": "yarn@1.22.22",
     "scripts": {
         "dev": "tsx watch server.ts",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate:deploy": "prisma migrate deploy",
         "build": "tsc",
         "start": "node dist/server.js",
+        "start:prod": "yarn prisma:migrate:deploy && node dist/server.js",
         "start:prod:ts": "npx prisma migrate deploy && node -r ts-node/register/transpile-only server.ts"
     },
     "dependencies": {

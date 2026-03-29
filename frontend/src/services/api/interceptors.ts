@@ -1,5 +1,4 @@
 // src/services/api/interceptors.ts
-import axios from "axios";
 import client from "./client";
 import type { Router } from "vue-router";
 
@@ -24,8 +23,9 @@ export function setupInterceptors(hooks: Hooks, router?: Router) {
             if (err?.response?.status === 401 && !original._retry) {
                 original._retry = true;
                 try {
-                    isRefreshing ??= axios.post(
+                    isRefreshing ??= client.post(
                         "/auth/refresh",
+                        {},
                         { withCredentials: true }
                     ).then(() => { /* ok */ }).finally(() => { isRefreshing = null; });
                     await isRefreshing;
