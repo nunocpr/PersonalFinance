@@ -10,27 +10,37 @@ export function setupInterceptors(hooks: Hooks, router?: Router) {
     const isGuestRoute = () => {
         const r = router?.currentRoute.value;
         if (!r) return false;
-        // any matched record with guestOnly meta
         return r.matched.some(rec => rec.meta?.guestOnly === true);
     };
 
-    const isAuthApi = (url?: string) => Boolean(url && url.startsWith("/auth/"));
+    const isRefreshApi = (url?: string) => Boolean(url && url.startsWith("/auth/refresh"));
 
     client.interceptors.response.use(
         (res) => res,
         async (err) => {
             const original = err.config;
-            if (err?.response?.status === 401 && !original._retry) {
+            if (
+                err?.response?.status === 401 &&
+                original &&
+                !original._retry &&
+                !isRefreshApi(original.url)
+            ) {
                 original._retry = true;
                 try {
                     isRefreshing ??= client.post(
                         "/auth/refresh",
                         {},
                         { withCredentials: true }
-                    ).then(() => { /* ok */ }).finally(() => { isRefreshing = null; });
+                    ).then(() => {
+                        hooks.onRefreshOk();
+                    }).finally(() => { isRefreshing = null; });
                     await isRefreshing;
+                    return client(original);
                 } catch {
-                    // fall through → let the store redirect to login
+                    hooks.onRefreshFail();
+                    if (!isGuestRoute()) {
+                        void router?.replace({ name: "auth-login" });
+                    }
                 }
             }
             return Promise.reject(err);
