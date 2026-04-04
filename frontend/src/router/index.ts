@@ -46,7 +46,9 @@ router.beforeEach(async (to) => {
 
     if (to.matched.some(r => r.meta?.guestOnly)) return true;
 
-    await bootstrapAuth();
+    if (!authed.value) {
+        await bootstrapAuth();
+    }
 
     if (to.matched.some(r => r.meta?.requiresAuth) && !authed.value) {
         return { name: "auth-login", replace: true };
